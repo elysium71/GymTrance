@@ -32,6 +32,20 @@ def get_data():
 def handle_post():
     data = request.get_json()
 
+    # Validation starts here
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    if "id" not in data or "workout" not in data:
+        return jsonify({"error": "Missing fields"}), 400
+
+    if not isinstance(data["id"], int):
+        return jsonify({"error": "ID must be integer"}), 400
+
+    if not isinstance(data["workout"], str):
+        return jsonify({"error": "Workout must be string"}), 400
+    # Validation ends here
+
     workouts = load_workouts()
     workouts.append(data)
     save_workouts(workouts)
@@ -40,3 +54,4 @@ def handle_post():
         "message": "Workout added successfully",
         "received": data
     }), 201
+

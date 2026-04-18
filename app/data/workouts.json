@@ -6,5 +6,9 @@
     {
         "id": 1,
         "workout": "Bench Press"
+    },
+    {
+        "id": 3,
+        "workout": "Deadlift"
     }
 ]
