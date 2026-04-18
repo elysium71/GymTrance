@@ -55,3 +55,21 @@ def handle_post():
         "received": data
     }), 201
 
+# delete the data in json file.
+@app.route('/data/<int:workout_id>', methods=['DELETE'])
+def delete_workout(workout_id):
+    workouts = load_workouts()
+
+    workout_to_delete = None
+    for w in workouts:
+        if w["id"] == workout_id:
+            workout_to_delete = w
+            break
+
+    if not workout_to_delete:
+        return jsonify({"error": "Workout not found"}), 404
+
+    workouts.remove(workout_to_delete)
+    save_workouts(workouts)
+
+    return jsonify({"message": "Workout deleted"}), 200
