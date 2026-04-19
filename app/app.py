@@ -1,16 +1,32 @@
 from flask import Flask, render_template, request, jsonify
 import json
+# create save file .json if not exist
+from pathlib import Path
 
 
 app = Flask(__name__)
 
-
 # save data into json file.
 DATA_FILE = "data/workouts.json"
 
+# make new workouts.json file if its not exist.
+if not Path('data/workouts.json').exists():
+    f = open("data/workouts.json", "w")   # 'r' for reading and 'w' for writing
+    f.write("[]")    # Write inside file 
+    f.close()   
+
 def load_workouts():
-    with open(DATA_FILE, "r") as file:
-        return json.load(file)
+    try:
+        with open(DATA_FILE, "r") as file:
+            return json.load(file)
+    # make a new json file if it empty or corrupted
+    except:
+        f = open("data/workouts.json", "w")   # 'r' for reading and 'w' for writing
+        f.write("[]")    # Write inside file 
+        f.close()
+        with open(DATA_FILE, "r") as file:
+            return json.load(file)
+
 
 def save_workouts(workouts):
     with open(DATA_FILE, "w") as file:
@@ -44,9 +60,14 @@ def handle_post():
 
     if not isinstance(data["workout"], str):
         return jsonify({"error": "Workout must be string"}), 400
+    
+    workouts = load_workouts()
+
+    if any(item.get('id') == data["id"] for item in workouts):
+        return jsonify({"error": "Workout id already existed"}), 400 
+
     # Validation ends here
 
-    workouts = load_workouts()
     workouts.append(data)
     save_workouts(workouts)
 
