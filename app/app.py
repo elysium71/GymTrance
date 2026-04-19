@@ -94,3 +94,25 @@ def delete_workout(workout_id):
     save_workouts(workouts)
 
     return jsonify({"message": "Workout deleted"}), 200
+
+#Update workout with id
+@app.route('/data/<int:workout_id>', methods=['PUT'])
+def update_workout(workout_id):
+    data = request.get_json()
+    
+    workouts = load_workouts()
+
+    workout_to_update = None
+
+    for w in workouts:
+        if w["id"] == workout_id:
+            w["workout"] = data.get("workout", w["workout"])
+            workout_to_update = w
+            break
+
+    if not workout_to_update:
+        return jsonify({"error": "Workout not found"}), 404
+    
+    save_workouts(workouts)
+
+    return jsonify({"message": "Workout updated"}), 200
