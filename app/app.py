@@ -1,8 +1,13 @@
 from flask import Flask, render_template, request, jsonify
+# Implement User Authentication
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 import json
 from pathlib import Path
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
+app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # secret key
+jwt = JWTManager(app)
 
 DATA_FILE = "data/workouts.json"
 
@@ -11,6 +16,42 @@ Path("data").mkdir(exist_ok=True)
 if not Path(DATA_FILE).exists():
     with open(DATA_FILE, "w") as f:
         f.write("[]")
+
+# user registeion
+users = {}  # Simulating a user database (use a real DB in production)
+
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.get_json()  # Get user data from the request
+    username = data.get('username')
+    password = data.get('password')
+    
+    # Check if user already exists
+    if username in users:
+        return jsonify({"message": "User already exists"}), 400
+    
+    # Hash the password before storing
+    hashed_password = generate_password_hash(password)
+
+    # Save the user (for now in-memory)
+    users[username] = {'password': hashed_password}
+
+    return jsonify({"message": "User registered successfully"}), 201
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()  # Get login data from the request
+    username = data.get('username')
+    password = data.get('password')
+
+    # Check if user exists
+    user = users.get(username)
+    if not user or not check_password_hash(user['password'], password):
+        return jsonify({"message": "Invalid credentials"}), 401
+
+    # Generate a JWT token if credentials are correct
+    access_token = create_access_token(identity=username)
+    return jsonify(access_token=access_token), 200
 
 # load data safely
 def load_workouts():
