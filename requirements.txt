@@ -1,2 +1,3 @@
-Python package install Flask:
+Python package required:
 pip install Flask
+pip install Flask-JWT-Extended
