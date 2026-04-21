@@ -4,7 +4,8 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 import json
 from pathlib import Path
 from werkzeug.security import generate_password_hash, check_password_hash
-
+import sqlite3 #SQL database for user authentication
+import re ## for password validation
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # secret key
 jwt = JWTManager(app)
@@ -20,23 +21,55 @@ if not Path(DATA_FILE).exists():
 # user registeion
 users = {}  # Simulating a user database (use a real DB in production)
 
+def is_password_strong(password):
+    errors = []
+
+    if len(password) < 8:
+        errors.append("Password must be at least 8 characters long.")
+    if not re.search(r"[A-Z]", password):
+        errors.append("Password must contain at least one uppercase letter.")
+    if not re.search(r"[0-9]", password):
+        errors.append("Password must contain at least one number.")
+    if not re.search(r"[\W_]", password):  # Special character
+        errors.append("Password must contain at least one special character.")
+    return True if not errors else errors
+
+def init_db():
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT)''')
+    conn.commit()
+    conn.close()
+
+# Call init_db() when the app starts
+init_db()
+
 @app.route('/register', methods=['POST'])
 def register():
-    # Get form data from the request
     username = request.form.get('username')
     password = request.form.get('password')
 
-    # Validate input
     if not username or not password:
-        return jsonify({"message": "Username and password are required"}), 400
+        return jsonify({"message": "Please enter a valid username and password."}), 400
 
-    # Check if user already exists
-    if username in users:
-        return jsonify({"message": "User already exists"}), 400
+    # Check if password is strong
+    password_validation_result = is_password_strong(password)
+    if password_validation_result != True:
+        return jsonify({"errors": password_validation_result}), 400
 
-    # Hash password and store user
+    # Check if the user exists in the database
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    c.execute("SELECT * FROM users WHERE username=?", (username,))
+    if c.fetchone():
+        conn.close()
+        return jsonify({"message": "Username already taken. Please choose a different one."}), 400
+
+    # Store the new user
     hashed_password = generate_password_hash(password)
-    users[username] = {'password': hashed_password}
+    c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_password))
+    conn.commit()
+    conn.close()
 
     return jsonify({"message": "User registered successfully"}), 201
 
