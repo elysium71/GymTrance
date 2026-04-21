@@ -7,6 +7,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3 #SQL database for user authentication
 import re ## for password validation
 
+# Initialize Flask app and JWT
+BASE_DIR = Path(__file__).resolve().parent
+DB_PATH = BASE_DIR / "users.db"
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # secret key
@@ -20,26 +23,10 @@ if not Path(DATA_FILE).exists():
     with open(DATA_FILE, "w") as f:
         f.write("[]")
 
-# user registeion
-users = {}  # Simulating a user database (use a real DB in production)
-
-def is_password_strong(password):
-    errors = []
-
-    if len(password) < 8:
-        errors.append("Password must be at least 8 characters long.")
-    if not re.search(r"[A-Z]", password):
-        errors.append("Password must contain at least one uppercase letter.")
-    if not re.search(r"[0-9]", password):
-        errors.append("Password must contain at least one number.")
-    if not re.search(r"[\W_]", password):  # Special character
-        errors.append("Password must contain at least one special character.")
-    
-    return errors if errors else True
 
 # Assuming you have a SQLite database 'users.db'
 def init_db():
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT)''')
     conn.commit()
@@ -61,9 +48,13 @@ def is_password_strong(password):
 
 @app.route('/register', methods=['POST'])
 def register():
-    data = request.get_json()  # Ensure we get JSON data
-    username = data.get('username')
-    password = data.get('password')
+    data = request.get_json(silent=True)   # Get JSON data from the request, Flask will not throw an error if body is empty or invalid JSON
+
+    if not data: # Validate that we received JSON data
+        return jsonify({"message": "Invalid or missing JSON body."}), 400
+
+    username = (data.get("username") or "").strip() # trim username before validation/query.
+    password = data.get("password")
 
     if not username or not password:
         return jsonify({"message": "Please enter a valid username and password."}), 400
@@ -73,7 +64,7 @@ def register():
         return jsonify({"errors": password_validation_result}), 400
 
     # Check if user exists
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT * FROM users WHERE username=?", (username,))
     if c.fetchone():
@@ -90,15 +81,17 @@ def register():
 
 @app.route('/login', methods=['POST'])
 def login():
-    data = request.get_json()  # Ensure we get JSON data from the client
-    username = data.get('username')
-    password = data.get('password')
+    data = request.get_json(silent=True)   # Get JSON data from the request, Flask will not throw an error if body is empty or invalid JSON
+    if not data:  # Validate that we received JSON data
+        return jsonify({"message": "Invalid or missing JSON body."}), 400
+    username = (data.get("username") or "").strip() # trim username before validation/query.
+    password = data.get("password")
 
     if not username or not password:
         return jsonify({"message": "Please enter both username and password."}), 400
 
     # Check if the user exists in the database
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("SELECT * FROM users WHERE username=?", (username,))
     user = c.fetchone()
@@ -138,7 +131,9 @@ def index():
     return render_template("index.html")
 
 # GET all workouts
+
 @app.route("/data", methods=["GET"])
+@jwt_required()  # Protect the route with JWT authentication
 def get_data():
     workouts = load_workouts()
     return jsonify({
@@ -234,4 +229,5 @@ def delete_workout(workout_id):
     }), 200
 
 if __name__ == "__main__":
+    init_db()
     app.run(debug=True)
