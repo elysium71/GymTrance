@@ -11,6 +11,7 @@ from datetime import timedelta
 # Initialize Flask app and JWT
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "users.db"
+ALLOWED_CATEGORIES = {"Strength", "Cardio", "Flexibility"}
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # secret key
@@ -158,11 +159,24 @@ def index():
 # GET all workouts
 
 @app.route("/data", methods=["GET"])
-@jwt_required()  # Protect the route with JWT authentication
+@jwt_required()
 def get_data():
     current_user = get_jwt_identity()
     workouts = load_workouts()
+
     user_workouts = [w for w in workouts if w.get("owner") == current_user]
+
+    category = (request.args.get("category") or "").strip()
+    keyword = (request.args.get("q") or "").strip().lower()
+
+    if category:
+        user_workouts = [w for w in user_workouts if w.get("category") == category]
+
+    if keyword:
+        user_workouts = [
+            w for w in user_workouts
+            if keyword in (w.get("workout") or "").lower()
+        ]
 
     return jsonify({
         "status": "success",
@@ -170,32 +184,41 @@ def get_data():
         "data": user_workouts
     }), 200
 
+
 # POST new workout
 @app.route("/data", methods=["POST"])
 @jwt_required()
 def handle_post():
-    data = request.get_json()
+    data = request.get_json(silent=True)
 
-    # validate input
     if not data:
         return jsonify({"status": "error", "message": "No data provided"}), 400
-    if "id" not in data or "workout" not in data:
+    if "id" not in data or "workout" not in data or "category" not in data:
         return jsonify({"status": "error", "message": "Missing fields"}), 400
     if not isinstance(data["id"], int):
         return jsonify({"status": "error", "message": "ID must be integer"}), 400
-    if not isinstance(data["workout"], str):
-        return jsonify({"status": "error", "message": "Workout must be string"}), 400
+    if not isinstance(data["workout"], str) or not data["workout"].strip():
+        return jsonify({"status": "error", "message": "Workout must be non-empty string"}), 400
+    if not isinstance(data["category"], str):
+        return jsonify({"status": "error", "message": "Category must be string"}), 400
+
+    category = data["category"].strip().title()
+    if category not in ALLOWED_CATEGORIES:
+        return jsonify({
+            "status": "error",
+            "message": f"Invalid category. Allowed: {', '.join(sorted(ALLOWED_CATEGORIES))}"
+        }), 400
 
     current_user = get_jwt_identity()
     workouts = load_workouts()
 
-    # check duplicate id
     if any(item.get("id") == data["id"] for item in workouts):
         return jsonify({"status": "error", "message": "Workout id already existed"}), 400
 
     new_workout = {
         "id": data["id"],
-        "workout": data["workout"],
+        "workout": data["workout"].strip(),
+        "category": category,
         "owner": current_user
     }
 
@@ -209,18 +232,17 @@ def handle_post():
     }), 201
 
 
+
 # PUT update workout
 @app.route("/data/<int:workout_id>", methods=["PUT"])
 @jwt_required()
 def update_workout(workout_id):
-    data = request.get_json()
+    data = request.get_json(silent=True)
 
     if not data:
         return jsonify({"status": "error", "message": "No data provided"}), 400
-    if "workout" not in data:
-        return jsonify({"status": "error", "message": "Missing fields"}), 400
-    if not isinstance(data["workout"], str):
-        return jsonify({"status": "error", "message": "Workout must be string"}), 400
+    if "workout" not in data and "category" not in data:
+        return jsonify({"status": "error", "message": "Nothing to update"}), 400
 
     current_user = get_jwt_identity()
     workouts = load_workouts()
@@ -233,7 +255,23 @@ def update_workout(workout_id):
                     "status": "error",
                     "message": "You are not allowed to modify this workout."
                 }), 403
-            w["workout"] = data["workout"]
+
+            if "workout" in data:
+                if not isinstance(data["workout"], str) or not data["workout"].strip():
+                    return jsonify({"status": "error", "message": "Workout must be non-empty string"}), 400
+                w["workout"] = data["workout"].strip()
+
+            if "category" in data:
+                if not isinstance(data["category"], str):
+                    return jsonify({"status": "error", "message": "Category must be string"}), 400
+                category = data["category"].strip().title()
+                if category not in ALLOWED_CATEGORIES:
+                    return jsonify({
+                        "status": "error",
+                        "message": f"Invalid category. Allowed: {', '.join(sorted(ALLOWED_CATEGORIES))}"
+                    }), 400
+                w["category"] = category
+
             workout_to_update = w
             break
 
@@ -247,6 +285,7 @@ def update_workout(workout_id):
         "message": "Workout updated",
         "data": workout_to_update
     }), 200
+
 
 
 # DELETE workout
