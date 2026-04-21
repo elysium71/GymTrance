@@ -38,6 +38,10 @@ Currently in early development (Day 1 – Planning & Setup)
 - Advanced security features
 - Deployment to cloud (AWS / similar)
 
+## Branch
+
+Created new branches, before was using main to branches all the changes, now uses **code** and **document**
+
 ##  Author
 
 GitHub: https://github.com/elysium71
