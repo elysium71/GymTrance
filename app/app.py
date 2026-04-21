@@ -6,6 +6,8 @@ from pathlib import Path
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3 #SQL database for user authentication
 import re ## for password validation
+
+
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # secret key
 jwt = JWTManager(app)
@@ -32,8 +34,10 @@ def is_password_strong(password):
         errors.append("Password must contain at least one number.")
     if not re.search(r"[\W_]", password):  # Special character
         errors.append("Password must contain at least one special character.")
-    return True if not errors else errors
+    
+    return errors if errors else True
 
+# Assuming you have a SQLite database 'users.db'
 def init_db():
     conn = sqlite3.connect('users.db')
     c = conn.cursor()
@@ -41,23 +45,34 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Call init_db() when the app starts
-init_db()
+# Password validation
+def is_password_strong(password):
+    errors = []
+    if len(password) < 8:
+        errors.append("Password must be at least 8 characters long.")
+    if not re.search(r"[A-Z]", password):
+        errors.append("Password must contain at least one uppercase letter.")
+    if not re.search(r"[0-9]", password):
+        errors.append("Password must contain at least one number.")
+    if not re.search(r"[\W_]", password):  # Special character
+        errors.append("Password must contain at least one special character.")
+    
+    return errors if errors else True
 
 @app.route('/register', methods=['POST'])
 def register():
-    username = request.form.get('username')
-    password = request.form.get('password')
+    data = request.get_json()  # Ensure we get JSON data
+    username = data.get('username')
+    password = data.get('password')
 
     if not username or not password:
         return jsonify({"message": "Please enter a valid username and password."}), 400
 
-    # Check if password is strong
     password_validation_result = is_password_strong(password)
     if password_validation_result != True:
         return jsonify({"errors": password_validation_result}), 400
 
-    # Check if the user exists in the database
+    # Check if user exists
     conn = sqlite3.connect('users.db')
     c = conn.cursor()
     c.execute("SELECT * FROM users WHERE username=?", (username,))
@@ -65,7 +80,7 @@ def register():
         conn.close()
         return jsonify({"message": "Username already taken. Please choose a different one."}), 400
 
-    # Store the new user
+    # Store the user
     hashed_password = generate_password_hash(password)
     c.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_password))
     conn.commit()
@@ -73,25 +88,35 @@ def register():
 
     return jsonify({"message": "User registered successfully"}), 201
 
-
 @app.route('/login', methods=['POST'])
 def login():
-    # Get form data from the request
-    username = request.form.get('username')
-    password = request.form.get('password')
+    data = request.get_json()  # Ensure we get JSON data from the client
+    username = data.get('username')
+    password = data.get('password')
 
-    # Validate input
     if not username or not password:
-        return jsonify({"message": "Username and password are required"}), 400
+        return jsonify({"message": "Please enter both username and password."}), 400
 
-    # Check if user exists and validate password
-    user = users.get(username)
-    if not user or not check_password_hash(user['password'], password):
-        return jsonify({"message": "Invalid credentials"}), 401
+    # Check if the user exists in the database
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    c.execute("SELECT * FROM users WHERE username=?", (username,))
+    user = c.fetchone()
 
-    # Generate JWT token if credentials are valid
+    if not user:  # Username not found
+        conn.close()
+        return jsonify({"message": "Invalid username. Please check your credentials."}), 401
+
+    # Compare the password
+    stored_password_hash = user[1]  # Assuming password is in the second column
+    if not check_password_hash(stored_password_hash, password):
+        conn.close()
+        return jsonify({"message": "Incorrect password. Please try again."}), 401
+
+    # Create JWT token if login is successful
     access_token = create_access_token(identity=username)
-    return jsonify(access_token=access_token), 200
+    conn.close()
+    return jsonify({"access_token": access_token}), 200
 
 # load data safely
 def load_workouts():

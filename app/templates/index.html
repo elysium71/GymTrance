@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
     <head>
         <title>Gym App</title>
@@ -6,81 +7,144 @@
     <body>
         <h1>Welcome to Gym App</h1>
 
-        <!-- registration form -->
+        <!-- Registration Form -->
         <div id="registration-form">
             <h2>Register</h2>
-            <form action="/register" method="POST">
+            <form id="registration-form">
                 <input type="text" name="username" placeholder="Username" required>
-                <input type="password" name="password" placeholder="Password" required>
+                <input type="password" name="password" id="password" placeholder="Password" required>
+
+                <!-- Password Requirements -->
+                <div id="password-requirements">
+                    <ul>
+                        <li id="length" class="invalid">Password must be at least 8 characters long.</li>
+                        <li id="uppercase" class="invalid">Password must contain at least one uppercase letter.</li>
+                        <li id="number" class="invalid">Password must contain at least one number.</li>
+                        <li id="special" class="invalid">Password must contain at least one special character.</li>
+                    </ul>
+                </div>
+
                 <button type="submit">Register</button>
             </form>
         </div>
 
-        <!-- login form -->
+        <!-- Login Form -->
         <div id="login-form">
             <h2>Login</h2>
-            <form action="/login" method="POST">
+            <form id="login-form">
                 <input type="text" name="username" placeholder="Username" required>
                 <input type="password" name="password" placeholder="Password" required>
                 <button type="submit">Login</button>
             </form>
         </div>
 
-        <!-- Optionally add workout display sections here -->
+        <!-- Feedback Script -->
+        <script>
+            // Real-time Password Validation
+            const passwordField = document.querySelector('#password');
+            const lengthRequirement = document.getElementById('length');
+            const uppercaseRequirement = document.getElementById('uppercase');
+            const numberRequirement = document.getElementById('number');
+            const specialRequirement = document.getElementById('special');
+            
+            // Check if password is strong
+            function validatePassword(password) {
+                // Validate length
+                if (password.length >= 8) {
+                    lengthRequirement.classList.remove('invalid');
+                    lengthRequirement.classList.add('valid');
+                } else {
+                    lengthRequirement.classList.remove('valid');
+                    lengthRequirement.classList.add('invalid');
+                }
+
+                // Validate uppercase letter
+                if (/[A-Z]/.test(password)) {
+                    uppercaseRequirement.classList.remove('invalid');
+                    uppercaseRequirement.classList.add('valid');
+                } else {
+                    uppercaseRequirement.classList.remove('valid');
+                    uppercaseRequirement.classList.add('invalid');
+                }
+
+                // Validate number
+                if (/[0-9]/.test(password)) {
+                    numberRequirement.classList.remove('invalid');
+                    numberRequirement.classList.add('valid');
+                } else {
+                    numberRequirement.classList.remove('valid');
+                    numberRequirement.classList.add('invalid');
+                }
+
+                // Validate special character
+                if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+                    specialRequirement.classList.remove('invalid');
+                    specialRequirement.classList.add('valid');
+                } else {
+                    specialRequirement.classList.remove('valid');
+                    specialRequirement.classList.add('invalid');
+                }
+            }
+
+            // Listen for input on the password field
+            passwordField.addEventListener('input', function() {
+                validatePassword(passwordField.value);
+            });
+
+            // Handle registration form submission
+            document.querySelector('#registration-form form').addEventListener('submit', function(event) {
+                event.preventDefault(); // Prevent default form submission
+
+                let username = document.querySelector('[name="username"]').value;
+                let password = document.querySelector('[name="password"]').value;
+
+                // Send JSON data via fetch API
+                fetch('http://127.0.0.1:5000/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'  // Ensure Content-Type is JSON
+                    },
+                    body: JSON.stringify({ username, password })  // Send data as JSON
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.errors) {
+                        // Display errors to the user
+                        alert(data.errors.join("\n"));
+                    } else if (data.message) {
+                        // Show success message
+                        alert(data.message); // Show success message only once
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                    alert('Error occurred during registration.');
+                });
+            });
+        </script>
+
+        <style>
+            #password-requirements {
+                margin-top: 10px;
+                font-size: 14px;
+            }
+
+            #password-requirements ul {
+                list-style: none;
+                padding: 0;
+            }
+
+            #password-requirements li {
+                color: red;
+            }
+
+            #password-requirements li.valid {
+                color: green;
+            }
+
+            #password-requirements li.invalid {
+                color: red;
+            }
+        </style>
     </body>
 </html>
-
-<script>
-    // Handle registration form submission
-    document.querySelector('#register-form').addEventListener('submit', function(event) {
-        event.preventDefault(); // Prevent default form submission
-        
-        let username = document.querySelector('[name="username"]').value;
-        let password = document.querySelector('[name="password"]').value;
-
-        // Send JSON data via fetch API
-        fetch('http://127.0.0.1:5000/register', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'  // Ensure Content-Type is JSON
-            },
-            body: JSON.stringify({ username, password })  // Send data as JSON
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Success:', data);
-            alert(data.message);  // Show success message
-        })
-        .catch((error) => {
-            console.error('Error:', error);
-            alert('Error occurred during registration.');
-        });
-    });
-
-    // Handle login form submission similarly
-    document.querySelector('#login-form').addEventListener('submit', function(event) {
-        event.preventDefault(); // Prevent default form submission
-        
-        let username = document.querySelector('[name="username"]').value;
-        let password = document.querySelector('[name="password"]').value;
-
-        fetch('http://127.0.0.1:5000/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'  // Ensure Content-Type is JSON
-            },
-            body: JSON.stringify({ username, password })  // Send data as JSON
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Login successful:', data);
-            if (data.access_token) {
-                alert('Login successful! Token: ' + data.access_token);
-            }
-        })
-        .catch((error) => {
-            console.error('Error:', error);
-            alert('Login failed.');
-        });
-    });
-</script>
