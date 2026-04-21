@@ -5,7 +5,8 @@ import json
 from pathlib import Path
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3 #SQL database for user authentication
-import re ## for password validation
+import re #for password validation
+from datetime import timedelta 
 
 # Initialize Flask app and JWT
 BASE_DIR = Path(__file__).resolve().parent
@@ -13,7 +14,30 @@ DB_PATH = BASE_DIR / "users.db"
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # secret key
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)  # Set token expiration
 jwt = JWTManager(app)
+# Custom response for unauthorized access
+
+@jwt.unauthorized_loader
+def custom_unauthorized_response(err_str):
+    return jsonify({
+        "status": "error",
+        "message": "Missing or invalid Authorization header."
+    }), 401
+
+@jwt.invalid_token_loader
+def custom_invalid_token_response(err_str):
+    return jsonify({
+        "status": "error",
+        "message": "Invalid token. Please log in again."
+    }), 422
+
+@jwt.expired_token_loader
+def custom_expired_token_response(jwt_header, jwt_payload):
+    return jsonify({
+        "status": "error",
+        "message": "Token has expired. Please log in again."
+    }), 401
 
 DATA_FILE = "data/workouts.json"
 
@@ -45,6 +69,7 @@ def is_password_strong(password):
         errors.append("Password must contain at least one special character.")
     
     return errors if errors else True
+
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -135,15 +160,19 @@ def index():
 @app.route("/data", methods=["GET"])
 @jwt_required()  # Protect the route with JWT authentication
 def get_data():
+    current_user = get_jwt_identity()
     workouts = load_workouts()
+    user_workouts = [w for w in workouts if w.get("owner") == current_user]
+
     return jsonify({
         "status": "success",
         "message": "Workouts retrieved",
-        "data": workouts
+        "data": user_workouts
     }), 200
 
 # POST new workout
 @app.route("/data", methods=["POST"])
+@jwt_required()
 def handle_post():
     data = request.get_json()
 
@@ -157,27 +186,35 @@ def handle_post():
     if not isinstance(data["workout"], str):
         return jsonify({"status": "error", "message": "Workout must be string"}), 400
 
+    current_user = get_jwt_identity()
     workouts = load_workouts()
 
     # check duplicate id
     if any(item.get("id") == data["id"] for item in workouts):
         return jsonify({"status": "error", "message": "Workout id already existed"}), 400
 
-    workouts.append(data)
+    new_workout = {
+        "id": data["id"],
+        "workout": data["workout"],
+        "owner": current_user
+    }
+
+    workouts.append(new_workout)
     save_workouts(workouts)
 
     return jsonify({
         "status": "success",
         "message": "Workout added",
-        "data": data
+        "data": new_workout
     }), 201
+
 
 # PUT update workout
 @app.route("/data/<int:workout_id>", methods=["PUT"])
+@jwt_required()
 def update_workout(workout_id):
     data = request.get_json()
 
-    # validate input
     if not data:
         return jsonify({"status": "error", "message": "No data provided"}), 400
     if "workout" not in data:
@@ -185,12 +222,17 @@ def update_workout(workout_id):
     if not isinstance(data["workout"], str):
         return jsonify({"status": "error", "message": "Workout must be string"}), 400
 
+    current_user = get_jwt_identity()
     workouts = load_workouts()
     workout_to_update = None
 
-    # find and update
     for w in workouts:
         if w["id"] == workout_id:
+            if w.get("owner") != current_user:
+                return jsonify({
+                    "status": "error",
+                    "message": "You are not allowed to modify this workout."
+                }), 403
             w["workout"] = data["workout"]
             workout_to_update = w
             break
@@ -206,14 +248,22 @@ def update_workout(workout_id):
         "data": workout_to_update
     }), 200
 
+
 # DELETE workout
 @app.route("/data/<int:workout_id>", methods=["DELETE"])
+@jwt_required()
 def delete_workout(workout_id):
+    current_user = get_jwt_identity()
     workouts = load_workouts()
 
     workout_to_delete = None
     for w in workouts:
         if w["id"] == workout_id:
+            if w.get("owner") != current_user:
+                return jsonify({
+                    "status": "error",
+                    "message": "You are not allowed to modify this workout."
+                }), 403
             workout_to_delete = w
             break
 
@@ -227,6 +277,7 @@ def delete_workout(workout_id):
         "status": "success",
         "message": "Workout deleted"
     }), 200
+
 
 if __name__ == "__main__":
     init_db()

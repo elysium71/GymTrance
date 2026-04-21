@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 app/users.db
 app/data/workouts.json
+app/data/workouts.json
+app/users.db
