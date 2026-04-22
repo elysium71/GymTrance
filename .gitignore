@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+app/users.db
+app/data/workouts.json
+app/data/workouts.json
+app/users.db
+app/users.db
+data/workouts.json
+app/users.db
+*.db
+*.db
