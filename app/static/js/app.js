@@ -5,75 +5,87 @@ const loadDataButton = document.querySelector('#load-data-btn');
 const savedToken = localStorage.getItem('access_token');
 console.log('Token on page load:', savedToken);
 
-
 if (savedToken) {
     console.log('Token already exists:', savedToken);
 } else {
     console.log('No token found');
 }
 
-document.querySelector('#login-form form').addEventListener('submit', function(event) {
+registerForm.addEventListener('submit', function (event) {
+    event.preventDefault();
 
-    event.preventDefault(); // Prevent default form submission
+    const username = registerForm.querySelector('[name="username"]').value;
+    const password = registerForm.querySelector('[name="password"]').value;
 
-    let username = document.querySelector('[name="username"]').value;
-    let password = document.querySelector('[name="password"]').value;
-
-    // Send JSON data via fetch API
-    fetch('http://127.0.0.1:5000/login', {
+    fetch('http://127.0.0.1:5000/register', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'  // Ensure Content-Type is JSON
+            'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ username, password })  // Send data as JSON
+        body: JSON.stringify({ username, password })
     })
     .then(response => response.json())
     .then(data => {
-        if (data.access_token) {
-            alert('Login successful!');
+        console.log('Registration response:', data);
+        alert(data.message || 'Registration completed');
+    })
+    .catch(error => {
+        console.error('Registration error:', error);
+        alert('Error occurred during registration.');
+    });
+});
 
-            // Store the access token (in localStorage or sessionStorage)
+loginForm.addEventListener('submit', function (event) {
+    event.preventDefault();
+
+    const username = loginForm.querySelector('[name="username"]').value;
+    const password = loginForm.querySelector('[name="password"]').value;
+
+    fetch('http://127.0.0.1:5000/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Login response:', data);
+        if (data.access_token) {
             localStorage.setItem('access_token', data.access_token);
             console.log('Saved token:', localStorage.getItem('access_token'));
             alert('Login successful!');
-
-            // Now fetch the workouts using the token
-            fetchWorkouts(data.access_token);
-        } else if (data.message) {
-            alert(data.message);  // Display the error message from the backend
+        } else {
+            alert(data.message || 'Login failed');
         }
     })
-    .catch((error) => {
-        console.error('Error:', error);
+    .catch(error => {
+        console.error('Login error:', error);
         alert('Login failed.');
     });
 });
 
-// Function to fetch workouts after successful login
-function fetchWorkouts(token) {
+loadDataButton.addEventListener('click', function () {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        alert('Please log in first');
+        return;
+    }
+
     fetch('http://127.0.0.1:5000/data', {
         method: 'GET',
         headers: {
-            'Authorization': `Bearer ${token}`  // Add the token in the Authorization header
+            'Authorization': `Bearer ${token}`
         }
     })
     .then(response => response.json())
     .then(data => {
-        if (data.status === "success") {
-            // Display workouts on the page
-            const workouts = data.data;
-            let workoutList = '<ul>';
-            workouts.forEach(workout => {
-                workoutList += `<li>${workout.workout}</li>`;
-            });
-            workoutList += '</ul>';
-            document.querySelector('#workouts').innerHTML = workoutList; // Assuming you have an element with id 'workouts'
-        } else {
-            alert('Failed to fetch workouts.');
-        }
+        console.log('Protected data response:', data);
+        alert('Workouts loaded successfully!');
     })
-    .catch((error) => {
-        console.error('Error:', error);
-        alert('Error fetching workouts.');
+    .catch(error => {
+        console.error('Load workouts error:', error);
+        alert('Failed to load workouts.');
     });
-}
+});
