@@ -1,3 +1,0 @@
-Python package required:
-pip install Flask
-pip install Flask-JWT-Extended
