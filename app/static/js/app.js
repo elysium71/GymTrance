@@ -1,6 +1,7 @@
 const registerForm = document.querySelector('#register-form');
 const loginForm = document.querySelector('#login-form-element');
 const loadDataButton = document.querySelector('#load-data-btn');
+const messageBox = document.querySelector('#message-box');
 
 const savedToken = localStorage.getItem('access_token');
 console.log('Token on page load:', savedToken);
@@ -9,6 +10,18 @@ if (savedToken) {
     console.log('Token already exists:', savedToken);
 } else {
     console.log('No token found');
+}
+
+function showMessage(message, type) {
+    messageBox.textContent = message;
+
+    if (type === 'success') {
+        messageBox.style.color = 'green';
+    } else if (type === 'error') {
+        messageBox.style.color = 'red';
+    } else {
+        messageBox.style.color = 'black';
+    }
 }
 
 registerForm.addEventListener('submit', function (event) {
@@ -27,11 +40,18 @@ registerForm.addEventListener('submit', function (event) {
     .then(response => response.json())
     .then(data => {
         console.log('Registration response:', data);
-        alert(data.message || 'Registration completed');
+
+        if (data.message) {
+            showMessage(data.message, 'success');
+        } else if (data.errors) {
+            showMessage(data.errors.join(' '), 'error');
+        } else {
+            showMessage('Registration completed.', 'success');
+        }
     })
     .catch(error => {
         console.error('Registration error:', error);
-        alert('Error occurred during registration.');
+        showMessage('Error occurred during registration.', 'error');
     });
 });
 
@@ -51,17 +71,18 @@ loginForm.addEventListener('submit', function (event) {
     .then(response => response.json())
     .then(data => {
         console.log('Login response:', data);
+
         if (data.access_token) {
             localStorage.setItem('access_token', data.access_token);
             console.log('Saved token:', localStorage.getItem('access_token'));
-            alert('Login successful!');
+            showMessage('Login successful!', 'success');
         } else {
-            alert(data.message || 'Login failed');
+            showMessage(data.message || 'Login failed.', 'error');
         }
     })
     .catch(error => {
         console.error('Login error:', error);
-        alert('Login failed.');
+        showMessage('Login failed.', 'error');
     });
 });
 
@@ -69,7 +90,7 @@ loadDataButton.addEventListener('click', function () {
     const token = localStorage.getItem('access_token');
 
     if (!token) {
-        alert('Please log in first');
+        showMessage('Please log in first.', 'error');
         return;
     }
 
@@ -82,10 +103,15 @@ loadDataButton.addEventListener('click', function () {
     .then(response => response.json())
     .then(data => {
         console.log('Protected data response:', data);
-        alert('Workouts loaded successfully!');
+
+        if (data.status === 'success') {
+            showMessage('Workouts loaded successfully!', 'success');
+        } else {
+            showMessage(data.message || 'Failed to load workouts.', 'error');
+        }
     })
     .catch(error => {
         console.error('Load workouts error:', error);
-        alert('Failed to load workouts.');
+        showMessage('Failed to load workouts.', 'error');
     });
 });
