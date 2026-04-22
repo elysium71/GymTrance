@@ -1,4 +1,18 @@
+const registerForm = document.querySelector('#register-form');
+const loginForm = document.querySelector('#login-form-element');
+
+const savedToken = localStorage.getItem('access_token');
+console.log('Token on page load:', savedToken);
+
+
+if (savedToken) {
+    console.log('Token already exists:', savedToken);
+} else {
+    console.log('No token found');
+}
+
 document.querySelector('#login-form form').addEventListener('submit', function(event) {
+
     event.preventDefault(); // Prevent default form submission
 
     let username = document.querySelector('[name="username"]').value;
@@ -19,6 +33,8 @@ document.querySelector('#login-form form').addEventListener('submit', function(e
 
             // Store the access token (in localStorage or sessionStorage)
             localStorage.setItem('access_token', data.access_token);
+            console.log('Saved token:', localStorage.getItem('access_token'));
+            alert('Login successful!');
 
             // Now fetch the workouts using the token
             fetchWorkouts(data.access_token);

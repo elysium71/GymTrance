@@ -25,61 +25,67 @@
             </form>
         </div>
 
-        <script>
-            const registerForm = document.querySelector('#register-form');
-            const loginForm = document.querySelector('#login-form-element');
+            <script>
+                const registerForm = document.querySelector('#register-form');
+                const loginForm = document.querySelector('#login-form-element');
 
-            registerForm.addEventListener('submit', function (event) {
-                event.preventDefault();
+                const savedToken = localStorage.getItem('access_token');
+                console.log('Token on page load:', savedToken);
 
-                const username = registerForm.querySelector('[name="username"]').value;
-                const password = registerForm.querySelector('[name="password"]').value;
+                registerForm.addEventListener('submit', function (event) {
+                    event.preventDefault();
 
-                fetch('http://127.0.0.1:5000/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ username, password })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Registration response:', data);
-                    alert(data.message || 'Registration completed');
-                })
-                .catch(error => {
-                    console.error('Registration error:', error);
-                    alert('Error occurred during registration.');
+                    const username = registerForm.querySelector('[name="username"]').value;
+                    const password = registerForm.querySelector('[name="password"]').value;
+
+                    fetch('http://127.0.0.1:5000/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ username, password })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Registration response:', data);
+                        alert(data.message || 'Registration completed');
+                    })
+                    .catch(error => {
+                        console.error('Registration error:', error);
+                        alert('Error occurred during registration.');
+                    });
                 });
-            });
 
-            loginForm.addEventListener('submit', function (event) {
-                event.preventDefault();
+                loginForm.addEventListener('submit', function (event) {
+                    event.preventDefault();
 
-                const username = loginForm.querySelector('[name="username"]').value;
-                const password = loginForm.querySelector('[name="password"]').value;
+                    const username = loginForm.querySelector('[name="username"]').value;
+                    const password = loginForm.querySelector('[name="password"]').value;
 
-                fetch('http://127.0.0.1:5000/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ username, password })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Login response:', data);
-                    if (data.access_token) {
-                        alert('Login successful! Token: ' + data.access_token);
-                    } else {
-                        alert(data.message || 'Login failed');
-                    }
-                })
-                .catch(error => {
-                    console.error('Login error:', error);
-                    alert('Login failed.');
+                    fetch('http://127.0.0.1:5000/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ username, password })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Login response:', data);
+                        if (data.access_token) {
+                            localStorage.setItem('access_token', data.access_token);
+                            console.log('Saved token:', localStorage.getItem('access_token'));
+                            alert('Login successful!');
+                        } else {
+                            alert(data.message || 'Login failed');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Login error:', error);
+                        alert('Login failed.');
+                    });
                 });
-            });
-        </script>
+            </script>
+
     </body>
 </html>
