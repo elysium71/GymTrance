@@ -22,10 +22,12 @@
                 <input type="text" name="username" placeholder="Username" required>
                 <input type="password" name="password" placeholder="Password" required>
                 <button type="submit">Login</button>
+                <button type="button" id="load-data-btn">Load Workouts</button>
             </form>
         </div>
 
             <script>
+                const loadDataButton = document.querySelector('#load-data-btn')
                 const registerForm = document.querySelector('#register-form');
                 const loginForm = document.querySelector('#login-form-element');
 
@@ -85,6 +87,30 @@
                         alert('Login failed.');
                     });
                 });
+                
+                loadDataButton.addEventListener('click', function () {
+                    const token = localStorage.getItem('access_token');
+
+                    if (!token) {
+                        alert('Please log in first');
+                        return;
+                    }
+
+                    fetch('http://127.0.0.1:5000/data', {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Protected data response:', data);
+                    })
+                    .catch(error => {
+                        console.error('Load workouts error:', error);
+                    });
+                });
+
             </script>
 
     </body>

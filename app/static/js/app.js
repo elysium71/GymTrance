@@ -1,5 +1,6 @@
 const registerForm = document.querySelector('#register-form');
 const loginForm = document.querySelector('#login-form-element');
+const loadDataButton = document.querySelector('#load-data-btn');
 
 const savedToken = localStorage.getItem('access_token');
 console.log('Token on page load:', savedToken);
