@@ -1,173 +1,52 @@
-const registerForm = document.querySelector('#register-form'); 
-const loginForm = document.querySelector('#login-form-element'); 
-const loadDataButton = document.querySelector('#load-data-btn'); 
+const registerForm = document.querySelector('#register-form');
+const loginForm = document.querySelector('#login-form-element');
+const loadDataButton = document.querySelector('#load-data-btn');
+const logoutButton = document.querySelector('#logout-btn');
+const clearWorkoutsButton = document.querySelector('#clear-workouts-btn');
+const addWorkoutForm = document.querySelector('#add-workout-form');
 const messageBox = document.querySelector('#message-box');
 const workoutList = document.querySelector('#workout-list');
-const logoutButton = document.querySelector('#logout-btn');
-const savedToken = localStorage.getItem('access_token');
-const addWorkoutForm = document.querySelector('#add-workout-form');
 
+const savedToken = localStorage.getItem('access_token');
 console.log('Token on page load:', savedToken);
 
-if (savedToken) { // Check if token exists in localStorage
-    console.log('Token already exists:', savedToken);
-} else {
-    console.log('No token found');
-}
-
-function showMessage(message, type) { // type can be 'success', 'error', or 'info'
+function showMessage(message, type) {
     messageBox.textContent = message;
 
     if (type === 'success') {
-        messageBox.style.color = 'green';
+        messageBox.style.color = '#3ddc97';
     } else if (type === 'error') {
-        messageBox.style.color = 'red';
+        messageBox.style.color = '#ff5f6d';
     } else {
-        messageBox.style.color = 'black';
+        messageBox.style.color = '#f5f7fb';
     }
 }
 
-function renderWorkouts(workouts) { // Render the list of workouts in the UI
+function renderWorkouts(workouts) {
     if (!workouts || workouts.length === 0) {
-        workoutList.innerHTML = '<p>No workouts found.</p>';
+        workoutList.innerHTML = '<p class="empty-state">No workouts found. Add your first one and start building your streak.</p>';
         return;
     }
 
-    let workoutHtml = '<ul>';
+    const workoutHtml = workouts.map(workout => `
+        <article class="workout-card">
+            <div class="workout-card-header">
+                <h3 class="workout-title">${workout.workout}</h3>
+                <span class="category-tag">${workout.category}</span>
+            </div>
+            <p class="workout-id">Workout ID: ${workout.id}</p>
+        </article>
+    `).join('');
 
-    workouts.forEach(workout => { // Assuming workout has 'workout' and 'category' properties
-        workoutHtml += `<li>${workout.workout} - ${workout.category}</li>`;
-    });
-
-    workoutHtml += '</ul>';
     workoutList.innerHTML = workoutHtml;
 }
-
-registerForm.addEventListener('submit', function (event) { // Handle registration form submission
-    event.preventDefault();
-
-    const username = registerForm.querySelector('[name="username"]').value;
-    const password = registerForm.querySelector('[name="password"]').value;
-
-    fetch('http://127.0.0.1:5000/register', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ username, password })
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('Registration response:', data);
-
-        if (data.message) {
-            showMessage(data.message, 'success');
-        } else if (data.errors) {
-            showMessage(data.errors.join(' '), 'error');
-        } else {
-            showMessage('Registration completed.', 'success');
-        }
-    })
-    .catch(error => {
-        console.error('Registration error:', error);
-        showMessage('Error occurred during registration.', 'error');
-    });
-});
-
-loginForm.addEventListener('submit', function (event) { // Handle login form submission
-    event.preventDefault();
-
-    const username = loginForm.querySelector('[name="username"]').value;
-    const password = loginForm.querySelector('[name="password"]').value;
-
-    fetch('http://127.0.0.1:5000/login', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ username, password })
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('Login response:', data);
-
-        if (data.access_token) {
-            localStorage.setItem('access_token', data.access_token);
-            console.log('Saved token:', localStorage.getItem('access_token'));
-            showMessage('Login successful!', 'success');
-            loadWorkouts();
-        } else {
-            showMessage(data.message || 'Login failed.', 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Login error:', error);
-        showMessage('Login failed.', 'error');
-    });
-});
-
-loadDataButton.addEventListener('click', function () {
-    loadWorkouts();
-});
-
-
-addWorkoutForm.addEventListener('submit', function (event) {
-    event.preventDefault();
-
-    const token = localStorage.getItem('access_token');
-
-    if (!token) {
-        showMessage('Please log in first.', 'error');
-        return;
-    }
-
-    const id = Number(addWorkoutForm.querySelector('[name="id"]').value);
-    const workout = addWorkoutForm.querySelector('[name="workout"]').value;
-    const category = addWorkoutForm.querySelector('[name="category"]').value;
-
-    fetch('http://127.0.0.1:5000/data', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ id, workout, category })
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('Add workout response:', data);
-
-        if (data.status === 'success') {
-            showMessage('Workout added successfully!', 'success');
-            addWorkoutForm.reset();
-
-            fetch('http://127.0.0.1:5000/data', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    renderWorkouts(data.data);
-                }
-            });
-        } else {
-            showMessage(data.message || 'Failed to add workout.', 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Add workout error:', error);
-        showMessage('Failed to add workout.', 'error');
-    });
-});
 
 function loadWorkouts() {
     const token = localStorage.getItem('access_token');
 
     if (!token) {
         showMessage('Please log in first.', 'error');
+        renderWorkouts([]);
         return;
     }
 
@@ -196,3 +75,123 @@ function loadWorkouts() {
     });
 }
 
+registerForm.addEventListener('submit', function (event) {
+    event.preventDefault();
+
+    const username = registerForm.querySelector('[name="username"]').value;
+    const password = registerForm.querySelector('[name="password"]').value;
+
+    fetch('http://127.0.0.1:5000/register', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Registration response:', data);
+
+        if (data.errors) {
+            showMessage(data.errors.join(' '), 'error');
+        } else {
+            showMessage(data.message || 'Registration completed.', 'success');
+        }
+    })
+    .catch(error => {
+        console.error('Registration error:', error);
+        showMessage('Error occurred during registration.', 'error');
+    });
+});
+
+loginForm.addEventListener('submit', function (event) {
+    event.preventDefault();
+
+    const username = loginForm.querySelector('[name="username"]').value;
+    const password = loginForm.querySelector('[name="password"]').value;
+
+    fetch('http://127.0.0.1:5000/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Login response:', data);
+
+        if (data.access_token) {
+            localStorage.setItem('access_token', data.access_token);
+            showMessage('Login successful!', 'success');
+            loadWorkouts();
+        } else {
+            showMessage(data.message || 'Login failed.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Login error:', error);
+        showMessage('Login failed.', 'error');
+    });
+});
+
+loadDataButton.addEventListener('click', function () {
+    loadWorkouts();
+});
+
+addWorkoutForm.addEventListener('submit', function (event) {
+    event.preventDefault();
+
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    const id = Number(addWorkoutForm.querySelector('[name="id"]').value);
+    const workout = addWorkoutForm.querySelector('[name="workout"]').value.trim();
+    const category = addWorkoutForm.querySelector('[name="category"]').value;
+
+    fetch('http://127.0.0.1:5000/data', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ id, workout, category })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Add workout response:', data);
+
+        if (data.status === 'success') {
+            showMessage('Workout added successfully!', 'success');
+            addWorkoutForm.reset();
+            loadWorkouts();
+        } else {
+            showMessage(data.message || 'Failed to add workout.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Add workout error:', error);
+        showMessage('Failed to add workout.', 'error');
+    });
+});
+
+logoutButton.addEventListener('click', function () {
+    localStorage.removeItem('access_token');
+    renderWorkouts([]);
+    showMessage('Logged out successfully.', 'success');
+});
+
+clearWorkoutsButton.addEventListener('click', function () {
+    workoutList.innerHTML = '';
+    showMessage('Workout list cleared.', 'success');
+});
+
+if (savedToken) {
+    loadWorkouts();
+} else {
+    renderWorkouts([]);
+}

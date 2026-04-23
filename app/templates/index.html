@@ -1,62 +1,98 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
     <head>
-        <title>Gym App</title> 
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>GymTrance</title>
         <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     </head>
     <body>
+        <div class="page-shell">
+            <header class="hero">
+                <div class="hero-copy">
+                    <p class="eyebrow">Workout Tracker</p>
+                    <h1>GymTrance</h1>
+                    <p class="hero-text">
+                        Track your sessions, stay consistent, and build your own training rhythm.
+                    </p>
+                </div>
+                <div class="hero-badge">
+                    <span class="badge-label">Status</span>
+                    <strong>Ready to Train</strong>
+                </div>
+            </header>
 
+            <main class="dashboard">
+                <section class="panel auth-panel">
+                    <div class="panel-heading">
+                        <h2>Account</h2>
+                        <p>Create an account or log in to manage your workouts.</p>
+                    </div>
 
-        
-        <h1>Welcome to Gym App</h1>
+                    <div class="auth-grid">
+                        <div class="auth-card">
+                            <h3>Register</h3>
+                            <form id="register-form" class="stack-form">
+                                <input type="text" name="username" placeholder="Username" required>
+                                <input type="password" name="password" placeholder="Password" required>
+                                <button type="submit">Register</button>
+                            </form>
+                        </div>
 
-        <div id="registration-form">
-            <h2>Register</h2>
-            <form id="register-form">
-                <input type="text" name="username" placeholder="Username" required>
-                <input type="password" name="password" placeholder="Password" required>
-                <button type="submit">Register</button>
-            </form>
+                        <div class="auth-card">
+                            <h3>Login</h3>
+                            <form id="login-form-element" class="stack-form">
+                                <input type="text" name="username" placeholder="Username" required>
+                                <input type="password" name="password" placeholder="Password" required>
+                                <button type="submit">Login</button>
+                            </form>
+
+                            <div class="action-row">
+                                <button type="button" id="load-data-btn" class="secondary-btn">Load Workouts</button>
+                                <button type="button" id="logout-btn" class="ghost-btn">Logout</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="message-box" class="message-box"></div>
+                </section>
+
+                <section class="panel content-panel">
+                    <div class="content-grid">
+                        <div class="workout-panel">
+                            <div class="section-header">
+                                <div>
+                                    <p class="section-label">Dashboard</p>
+                                    <h2>Your Workouts</h2>
+                                </div>
+                                <button type="button" id="clear-workouts-btn" class="ghost-btn">Clear View</button>
+                            </div>
+
+                            <div id="workout-list" class="workout-list"></div>
+                        </div>
+
+                        <div class="panel add-panel">
+                            <div class="panel-heading">
+                                <h2>Add Workout</h2>
+                                <p>Save a new session to your account.</p>
+                            </div>
+
+                            <form id="add-workout-form" class="stack-form">
+                                <input type="number" name="id" placeholder="Workout ID" required>
+                                <input type="text" name="workout" placeholder="Workout name" required>
+                                <select name="category" required>
+                                    <option value="">Select category</option>
+                                    <option value="Strength">Strength</option>
+                                    <option value="Cardio">Cardio</option>
+                                    <option value="Flexibility">Flexibility</option>
+                                </select>
+                                <button type="submit">Add Workout</button>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+            </main>
         </div>
-
-        <div id="login-form">
-            <h2>Login</h2>
-            <form id="login-form-element">
-                <input type="text" name="username" placeholder="Username" required>
-                <input type="password" name="password" placeholder="Password" required>
-                <button type="submit">Login</button>
-                <button type="button" id="load-data-btn">Load Workouts</button>
-                <button type="button" id="logout-btn">Logout</button>
-            </form>
-        </div>
-
-        <div id="message-box"></div>
-
-
-
-
-
-
-        <div id="workouts-section">
-            <h2>Your Workouts</h2>
-            <div id="workout-list"></div>
-        </div>
-
-        <div id="add-workout-section">
-            <h2>Add Workout</h2>
-            <form id="add-workout-form">
-                <input type="number" name="id" placeholder="Workout ID" required>
-                <input type="text" name="workout" placeholder="Workout name" required>
-                <select name="category" required>
-                    <option value="">Select category</option>
-                    <option value="Strength">Strength</option>
-                    <option value="Cardio">Cardio</option>
-                    <option value="Flexibility">Flexibility</option>
-                </select>
-                <button type="submit">Add Workout</button>
-            </form>
-        </div>
-
 
         <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     </body>
