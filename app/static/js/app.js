@@ -5,6 +5,8 @@ const messageBox = document.querySelector('#message-box');
 const workoutList = document.querySelector('#workout-list');
 const logoutButton = document.querySelector('#logout-btn');
 const savedToken = localStorage.getItem('access_token');
+const addWorkoutForm = document.querySelector('#add-workout-form');
+
 console.log('Token on page load:', savedToken);
 
 if (savedToken) { // Check if token exists in localStorage
@@ -135,4 +137,57 @@ loadDataButton.addEventListener('click', function () { // Handle load workouts b
         renderWorkouts([]);
     });
 });
+
+addWorkoutForm.addEventListener('submit', function (event) {
+    event.preventDefault();
+
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    const id = Number(addWorkoutForm.querySelector('[name="id"]').value);
+    const workout = addWorkoutForm.querySelector('[name="workout"]').value;
+    const category = addWorkoutForm.querySelector('[name="category"]').value;
+
+    fetch('http://127.0.0.1:5000/data', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ id, workout, category })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Add workout response:', data);
+
+        if (data.status === 'success') {
+            showMessage('Workout added successfully!', 'success');
+            addWorkoutForm.reset();
+
+            fetch('http://127.0.0.1:5000/data', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    renderWorkouts(data.data);
+                }
+            });
+        } else {
+            showMessage(data.message || 'Failed to add workout.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Add workout error:', error);
+        showMessage('Failed to add workout.', 'error');
+    });
+});
+
 

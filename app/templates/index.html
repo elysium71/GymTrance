@@ -5,6 +5,9 @@
         <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     </head>
     <body>
+
+
+        
         <h1>Welcome to Gym App</h1>
 
         <div id="registration-form">
@@ -29,10 +32,31 @@
 
         <div id="message-box"></div>
 
+
+
+
+
+
         <div id="workouts-section">
             <h2>Your Workouts</h2>
             <div id="workout-list"></div>
         </div>
+
+        <div id="add-workout-section">
+            <h2>Add Workout</h2>
+            <form id="add-workout-form">
+                <input type="number" name="id" placeholder="Workout ID" required>
+                <input type="text" name="workout" placeholder="Workout name" required>
+                <select name="category" required>
+                    <option value="">Select category</option>
+                    <option value="Strength">Strength</option>
+                    <option value="Cardio">Cardio</option>
+                    <option value="Flexibility">Flexibility</option>
+                </select>
+                <button type="submit">Add Workout</button>
+            </form>
+        </div>
+
 
         <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     </body>
