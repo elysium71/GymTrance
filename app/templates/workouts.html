@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>My Workouts - GymTrance</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    </head>
+    <body>
+        <div class="page-shell">
+            <header class="hero">
+                <div class="hero-copy">
+                    <p class="eyebrow">Member Dashboard</p>
+                    <h1>My Workouts</h1>
+                    <p class="hero-text">
+                        View your sessions, add new workouts, and keep your training organized.
+                    </p>
+                </div>
+                <div class="hero-badge">
+                    <span class="badge-label">Dashboard</span>
+                    <strong>Active Session</strong>
+                </div>
+            </header>
+
+            <main class="dashboard">
+                <section class="panel content-panel">
+                    <div id="message-box" class="message-box"></div>
+
+                    <div class="content-grid">
+                        <div class="workout-panel">
+                            <div class="section-header">
+                                <div>
+                                    <p class="section-label">Dashboard</p>
+                                    <h2>Your Workouts</h2>
+                                </div>
+                                <div class="action-row dashboard-actions">
+                                    <button type="button" id="load-data-btn" class="secondary-btn">Refresh</button>
+                                    <button type="button" id="logout-btn" class="ghost-btn">Logout</button>
+                                </div>
+                            </div>
+
+                            <div id="workout-list" class="workout-list"></div>
+                        </div>
+
+                        <div class="panel add-panel">
+                            <div class="panel-heading">
+                                <h2>Add Workout</h2>
+                                <p>Save a new session to your account.</p>
+                            </div>
+
+                            <form id="add-workout-form" class="stack-form">
+                                <input type="number" name="id" placeholder="Workout ID" required>
+                                <input type="text" name="workout" placeholder="Workout name" required>
+                                <select name="category" required>
+                                    <option value="">Select category</option>
+                                    <option value="Strength">Strength</option>
+                                    <option value="Cardio">Cardio</option>
+                                    <option value="Flexibility">Flexibility</option>
+                                </select>
+                                <button type="submit">Add Workout</button>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    </body>
+</html>

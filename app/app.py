@@ -137,6 +137,13 @@ def login():
     conn.close()
     return jsonify({"access_token": access_token}), 200
 
+
+@app.route("/workouts")
+def workouts_page():
+    return render_template("workouts.html")
+
+
+
 # load data safely
 def load_workouts():
     try:
@@ -316,6 +323,7 @@ def delete_workout(workout_id):
         "status": "success",
         "message": "Workout deleted"
     }), 200
+
 
 
 if __name__ == "__main__":
