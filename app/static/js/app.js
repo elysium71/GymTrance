@@ -1,9 +1,9 @@
-const registerForm = document.querySelector('#register-form');
-const loginForm = document.querySelector('#login-form-element');
-const loadDataButton = document.querySelector('#load-data-btn');
+const registerForm = document.querySelector('#register-form'); 
+const loginForm = document.querySelector('#login-form-element'); 
+const loadDataButton = document.querySelector('#load-data-btn'); 
 const messageBox = document.querySelector('#message-box');
 const workoutList = document.querySelector('#workout-list');
-
+const logoutButton = document.querySelector('#logout-btn');
 const savedToken = localStorage.getItem('access_token');
 console.log('Token on page load:', savedToken);
 
@@ -135,3 +135,4 @@ loadDataButton.addEventListener('click', function () {
         renderWorkouts([]);
     });
 });
+
