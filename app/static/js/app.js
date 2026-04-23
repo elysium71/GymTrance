@@ -1,18 +1,19 @@
-const registerForm = document.querySelector('#register-form');
-const loginForm = document.querySelector('#login-form-element');
-const loadDataButton = document.querySelector('#load-data-btn');
+const registerForm = document.querySelector('#register-form'); 
+const loginForm = document.querySelector('#login-form-element'); 
+const loadDataButton = document.querySelector('#load-data-btn'); 
 const messageBox = document.querySelector('#message-box');
-
+const workoutList = document.querySelector('#workout-list');
+const logoutButton = document.querySelector('#logout-btn');
 const savedToken = localStorage.getItem('access_token');
 console.log('Token on page load:', savedToken);
 
-if (savedToken) {
+if (savedToken) { // Check if token exists in localStorage
     console.log('Token already exists:', savedToken);
 } else {
     console.log('No token found');
 }
 
-function showMessage(message, type) {
+function showMessage(message, type) { // type can be 'success', 'error', or 'info'
     messageBox.textContent = message;
 
     if (type === 'success') {
@@ -24,7 +25,23 @@ function showMessage(message, type) {
     }
 }
 
-registerForm.addEventListener('submit', function (event) {
+function renderWorkouts(workouts) { // Render the list of workouts in the UI
+    if (!workouts || workouts.length === 0) {
+        workoutList.innerHTML = '<p>No workouts found.</p>';
+        return;
+    }
+
+    let workoutHtml = '<ul>';
+
+    workouts.forEach(workout => { // Assuming workout has 'workout' and 'category' properties
+        workoutHtml += `<li>${workout.workout} - ${workout.category}</li>`;
+    });
+
+    workoutHtml += '</ul>';
+    workoutList.innerHTML = workoutHtml;
+}
+
+registerForm.addEventListener('submit', function (event) { // Handle registration form submission
     event.preventDefault();
 
     const username = registerForm.querySelector('[name="username"]').value;
@@ -55,7 +72,7 @@ registerForm.addEventListener('submit', function (event) {
     });
 });
 
-loginForm.addEventListener('submit', function (event) {
+loginForm.addEventListener('submit', function (event) { // Handle login form submission
     event.preventDefault();
 
     const username = loginForm.querySelector('[name="username"]').value;
@@ -86,7 +103,7 @@ loginForm.addEventListener('submit', function (event) {
     });
 });
 
-loadDataButton.addEventListener('click', function () {
+loadDataButton.addEventListener('click', function () { // Handle load workouts button click
     const token = localStorage.getItem('access_token');
 
     if (!token) {
@@ -106,12 +123,16 @@ loadDataButton.addEventListener('click', function () {
 
         if (data.status === 'success') {
             showMessage('Workouts loaded successfully!', 'success');
+            renderWorkouts(data.data);
         } else {
             showMessage(data.message || 'Failed to load workouts.', 'error');
+            renderWorkouts([]);
         }
     })
     .catch(error => {
         console.error('Load workouts error:', error);
         showMessage('Failed to load workouts.', 'error');
+        renderWorkouts([]);
     });
 });
+
