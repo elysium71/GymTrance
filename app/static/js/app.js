@@ -7,13 +7,13 @@ const logoutButton = document.querySelector('#logout-btn');
 const savedToken = localStorage.getItem('access_token');
 console.log('Token on page load:', savedToken);
 
-if (savedToken) {
+if (savedToken) { // Check if token exists in localStorage
     console.log('Token already exists:', savedToken);
 } else {
     console.log('No token found');
 }
 
-function showMessage(message, type) {
+function showMessage(message, type) { // type can be 'success', 'error', or 'info'
     messageBox.textContent = message;
 
     if (type === 'success') {
@@ -25,7 +25,7 @@ function showMessage(message, type) {
     }
 }
 
-function renderWorkouts(workouts) {
+function renderWorkouts(workouts) { // Render the list of workouts in the UI
     if (!workouts || workouts.length === 0) {
         workoutList.innerHTML = '<p>No workouts found.</p>';
         return;
@@ -33,7 +33,7 @@ function renderWorkouts(workouts) {
 
     let workoutHtml = '<ul>';
 
-    workouts.forEach(workout => {
+    workouts.forEach(workout => { // Assuming workout has 'workout' and 'category' properties
         workoutHtml += `<li>${workout.workout} - ${workout.category}</li>`;
     });
 
@@ -41,7 +41,7 @@ function renderWorkouts(workouts) {
     workoutList.innerHTML = workoutHtml;
 }
 
-registerForm.addEventListener('submit', function (event) {
+registerForm.addEventListener('submit', function (event) { // Handle registration form submission
     event.preventDefault();
 
     const username = registerForm.querySelector('[name="username"]').value;
@@ -72,7 +72,7 @@ registerForm.addEventListener('submit', function (event) {
     });
 });
 
-loginForm.addEventListener('submit', function (event) {
+loginForm.addEventListener('submit', function (event) { // Handle login form submission
     event.preventDefault();
 
     const username = loginForm.querySelector('[name="username"]').value;
@@ -103,7 +103,7 @@ loginForm.addEventListener('submit', function (event) {
     });
 });
 
-loadDataButton.addEventListener('click', function () {
+loadDataButton.addEventListener('click', function () { // Handle load workouts button click
     const token = localStorage.getItem('access_token');
 
     if (!token) {
