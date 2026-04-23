@@ -2,6 +2,7 @@ const registerForm = document.querySelector('#register-form');
 const loginForm = document.querySelector('#login-form-element');
 const loadDataButton = document.querySelector('#load-data-btn');
 const messageBox = document.querySelector('#message-box');
+const workoutList = document.querySelector('#workout-list');
 
 const savedToken = localStorage.getItem('access_token');
 console.log('Token on page load:', savedToken);
@@ -22,6 +23,22 @@ function showMessage(message, type) {
     } else {
         messageBox.style.color = 'black';
     }
+}
+
+function renderWorkouts(workouts) {
+    if (!workouts || workouts.length === 0) {
+        workoutList.innerHTML = '<p>No workouts found.</p>';
+        return;
+    }
+
+    let workoutHtml = '<ul>';
+
+    workouts.forEach(workout => {
+        workoutHtml += `<li>${workout.workout} - ${workout.category}</li>`;
+    });
+
+    workoutHtml += '</ul>';
+    workoutList.innerHTML = workoutHtml;
 }
 
 registerForm.addEventListener('submit', function (event) {
@@ -106,12 +123,15 @@ loadDataButton.addEventListener('click', function () {
 
         if (data.status === 'success') {
             showMessage('Workouts loaded successfully!', 'success');
+            renderWorkouts(data.data);
         } else {
             showMessage(data.message || 'Failed to load workouts.', 'error');
+            renderWorkouts([]);
         }
     })
     .catch(error => {
         console.error('Load workouts error:', error);
         showMessage('Failed to load workouts.', 'error');
+        renderWorkouts([]);
     });
 });
