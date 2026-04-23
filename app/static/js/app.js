@@ -95,6 +95,7 @@ loginForm.addEventListener('submit', function (event) { // Handle login form sub
             localStorage.setItem('access_token', data.access_token);
             console.log('Saved token:', localStorage.getItem('access_token'));
             showMessage('Login successful!', 'success');
+            loadWorkouts();
         } else {
             showMessage(data.message || 'Login failed.', 'error');
         }
@@ -105,38 +106,10 @@ loginForm.addEventListener('submit', function (event) { // Handle login form sub
     });
 });
 
-loadDataButton.addEventListener('click', function () { // Handle load workouts button click
-    const token = localStorage.getItem('access_token');
-
-    if (!token) {
-        showMessage('Please log in first.', 'error');
-        return;
-    }
-
-    fetch('http://127.0.0.1:5000/data', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('Protected data response:', data);
-
-        if (data.status === 'success') {
-            showMessage('Workouts loaded successfully!', 'success');
-            renderWorkouts(data.data);
-        } else {
-            showMessage(data.message || 'Failed to load workouts.', 'error');
-            renderWorkouts([]);
-        }
-    })
-    .catch(error => {
-        console.error('Load workouts error:', error);
-        showMessage('Failed to load workouts.', 'error');
-        renderWorkouts([]);
-    });
+loadDataButton.addEventListener('click', function () {
+    loadWorkouts();
 });
+
 
 addWorkoutForm.addEventListener('submit', function (event) {
     event.preventDefault();
@@ -190,4 +163,36 @@ addWorkoutForm.addEventListener('submit', function (event) {
     });
 });
 
+function loadWorkouts() {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch('http://127.0.0.1:5000/data', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Protected data response:', data);
+
+        if (data.status === 'success') {
+            showMessage('Workouts loaded successfully!', 'success');
+            renderWorkouts(data.data);
+        } else {
+            showMessage(data.message || 'Failed to load workouts.', 'error');
+            renderWorkouts([]);
+        }
+    })
+    .catch(error => {
+        console.error('Load workouts error:', error);
+        showMessage('Failed to load workouts.', 'error');
+        renderWorkouts([]);
+    });
+}
 
