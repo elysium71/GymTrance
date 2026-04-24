@@ -1,29 +1,71 @@
 [
     {
-        "id": 103,
-        "workout": "Plank"
+        "id": 1,
+        "workout": "Bench Press",
+        "category": "Strength",
+        "is_preset": true
     },
     {
-        "id": 200,
-        "workout": "Deadlift"
-    },
-    {
-        "id": 2001,
-        "workout": "Deadlift"
-    },
-    {
-        "id": 20013,
+        "id": 2,
         "workout": "Deadlift",
-        "owner": "your_username1"
+        "category": "Strength",
+        "is_preset": true
     },
     {
-        "id": 9001,
-        "workout": "Bench Press",
-        "owner": "your_username1"
+        "id": 3,
+        "workout": "Chest Press",
+        "category": "Strength",
+        "is_preset": true
     },
     {
-        "id": 900132,
-        "workout": "Bench Press",
-        "owner": "your_username3"
+        "id": 4,
+        "workout": "Squat",
+        "category": "Strength",
+        "is_preset": true
+    },
+    {
+        "id": 5,
+        "workout": "Lat Pulldown",
+        "category": "Strength",
+        "is_preset": true
+    },
+    {
+        "id": 6,
+        "workout": "Treadmill Run",
+        "category": "Cardio",
+        "is_preset": true
+    },
+    {
+        "id": 7,
+        "workout": "Cycling",
+        "category": "Cardio",
+        "is_preset": true
+    },
+    {
+        "id": 8,
+        "workout": "Jump Rope",
+        "category": "Cardio",
+        "is_preset": true
+    },
+    {
+        "id": 9,
+        "workout": "Yoga Flow",
+        "category": "Flexibility",
+        "is_preset": true
+    },
+    {
+        "id": 10,
+        "workout": "Hamstring Stretch",
+        "category": "Flexibility",
+        "is_preset": true
+    },
+
+    {
+    "id": 101,
+    "workout": "My Custom Push Day",
+    "category": "Strength",
+    "owner": "your_username",
+    "is_preset": false
     }
+
 ]
