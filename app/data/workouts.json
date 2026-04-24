@@ -65,5 +65,17 @@
         "category": "Strength",
         "owner": "your_username",
         "is_preset": false
+    },
+    {
+        "id": 10000,
+        "workout": "Bench Press",
+        "category": "Strength",
+        "owner": "admin"
+    },
+    {
+        "id": 10001,
+        "workout": "Bench Press",
+        "category": "Strength",
+        "owner": "admin"
     }
 ]

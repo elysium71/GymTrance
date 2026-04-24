@@ -280,6 +280,18 @@ button[type="submit"] {
     font-size: 1rem;
 }
 
+button:disabled {
+    background: #5c6470;
+    color: #c9d0d8;
+    cursor: not-allowed;
+    opacity: 0.65;
+    transform: none;
+}
+
+button:disabled:hover {
+    transform: none;
+    opacity: 0.65;
+}
 
 .category-tag {
     display: inline-flex;

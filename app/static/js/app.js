@@ -5,6 +5,12 @@ const logoutButton = document.querySelector('#logout-btn');
 const addWorkoutForm = document.querySelector('#add-workout-form');
 const messageBox = document.querySelector('#message-box');
 const workoutList = document.querySelector('#workout-list');
+const presetWorkoutSelect = document.querySelector('#preset-workout-select');
+const customWorkoutInput = document.querySelector('#custom-workout-input');
+const customCategorySelect = document.querySelector('#custom-category-select');
+const addPresetButton = document.querySelector('#add-preset-btn');
+const addCustomButton = document.querySelector('#add-custom-btn');
+
 
 const savedToken = localStorage.getItem('access_token');
 
@@ -23,6 +29,51 @@ function showMessage(message, type) {
         messageBox.style.color = '#f5f7fb';
     }
 }
+function updateWorkoutButtons() {
+    if (addPresetButton && presetWorkoutSelect) {
+        addPresetButton.disabled = !presetWorkoutSelect.value;
+    }
+
+    if (addCustomButton && customWorkoutInput && customCategorySelect) {
+        addCustomButton.disabled = !customWorkoutInput.value.trim() || !customCategorySelect.value;
+    }
+}
+
+function createWorkout(workout, category) {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch('http://127.0.0.1:5000/data', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ workout, category })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage('Workout added successfully!', 'success');
+            if (addWorkoutForm) {
+                addWorkoutForm.reset();
+            }
+            updateWorkoutButtons();
+            loadWorkouts();
+        } else {
+            showMessage(data.message || 'Failed to add workout.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Add workout error:', error);
+        showMessage('Failed to add workout.', 'error');
+    });
+}
+
 
 function renderWorkouts(workouts) {
     if (!workoutList) {
@@ -183,59 +234,48 @@ if (loadDataButton) {
 }
 
 if (addWorkoutForm) {
-    addWorkoutForm.addEventListener('submit', function (event) {
-        event.preventDefault();
+    if (presetWorkoutSelect) {
+        presetWorkoutSelect.addEventListener('change', updateWorkoutButtons);
+    }
 
-        const token = localStorage.getItem('access_token');
+    if (customWorkoutInput) {
+        customWorkoutInput.addEventListener('input', updateWorkoutButtons);
+    }
 
-        if (!token) {
-            showMessage('Please log in first.', 'error');
-            return;
-        }
+    if (customCategorySelect) {
+        customCategorySelect.addEventListener('change', updateWorkoutButtons);
+    }
 
-        const presetSelect = addWorkoutForm.querySelector('[name="preset_workout"]');
-        const presetWorkout = presetSelect.value;
-        const presetCategory = presetSelect.options[presetSelect.selectedIndex].dataset.category || '';
-        const customWorkout = addWorkoutForm.querySelector('[name="custom_workout"]').value.trim();
-        const customCategory = addWorkoutForm.querySelector('[name="category"]').value;
+    if (addPresetButton) {
+        addPresetButton.addEventListener('click', function () {
+            const selectedOption = presetWorkoutSelect.options[presetWorkoutSelect.selectedIndex];
+            const workout = selectedOption.value;
+            const category = selectedOption.dataset.category || '';
 
-        const workout = presetWorkout || customWorkout;
-        const category = presetWorkout ? presetCategory : customCategory;
-
-        if (!workout) {
-            showMessage('Please choose a preset exercise or enter a custom workout.', 'error');
-            return;
-        }
-
-        if (!category) {
-            showMessage('Please select a category for your custom workout.', 'error');
-            return;
-        }
-
-
-        fetch('http://127.0.0.1:5000/data', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ workout, category })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                showMessage('Workout added successfully!', 'success');
-                addWorkoutForm.reset();
-                loadWorkouts();
-            } else {
-                showMessage(data.message || 'Failed to add workout.', 'error');
+            if (!workout || !category) {
+                showMessage('Please choose a preset workout.', 'error');
+                return;
             }
-        })
-        .catch(error => {
-            console.error('Add workout error:', error);
-            showMessage('Failed to add workout.', 'error');
+
+            createWorkout(workout, category);
         });
-    });
+    }
+
+    if (addCustomButton) {
+        addCustomButton.addEventListener('click', function () {
+            const workout = customWorkoutInput.value.trim();
+            const category = customCategorySelect.value;
+
+            if (!workout || !category) {
+                showMessage('Please complete the custom workout section.', 'error');
+                return;
+            }
+
+            createWorkout(workout, category);
+        });
+    }
+    updateWorkoutButtons();
+
 }
 
 if (logoutButton) {

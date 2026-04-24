@@ -51,7 +51,7 @@
                             <form id="add-workout-form" class="stack-form">
                                 <div class="mini-box">
                                     <h3>Preset Workout</h3>
-                                    <select name="preset_workout">
+                                    <select name="preset_workout" id="preset-workout-select">
                                         <option value="">Choose a preset exercise</option>
                                         <option value="Bench Press" data-category="Strength">Bench Press</option>
                                         <option value="Deadlift" data-category="Strength">Deadlift</option>
@@ -64,22 +64,22 @@
                                         <option value="Yoga Flow" data-category="Flexibility">Yoga Flow</option>
                                         <option value="Hamstring Stretch" data-category="Flexibility">Hamstring Stretch</option>
                                     </select>
-
+                                    <button type="button" id="add-preset-btn" disabled>Add Preset Workout</button>
                                 </div>
 
                                 <div class="mini-box">
                                     <h3>Custom Workout</h3>
-                                    <input type="text" name="custom_workout" placeholder="Type a custom workout">
-                                    <select name="category">
+                                    <input type="text" name="custom_workout" id="custom-workout-input" placeholder="Type a custom workout">
+                                    <select name="category" id="custom-category-select">
                                         <option value="">Select category</option>
                                         <option value="Strength">Strength</option>
                                         <option value="Cardio">Cardio</option>
                                         <option value="Flexibility">Flexibility</option>
                                     </select>
+                                    <button type="button" id="add-custom-btn" disabled>Add Custom Workout</button>
                                 </div>
-
-                                <button type="submit">Add Workout</button>
                             </form>
+
                         </div>
                     </div>
                 </section>
