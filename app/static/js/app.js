@@ -193,16 +193,25 @@ if (addWorkoutForm) {
             return;
         }
 
-        const presetWorkout = addWorkoutForm.querySelector('[name="preset_workout"]').value;
+        const presetSelect = addWorkoutForm.querySelector('[name="preset_workout"]');
+        const presetWorkout = presetSelect.value;
+        const presetCategory = presetSelect.options[presetSelect.selectedIndex].dataset.category || '';
         const customWorkout = addWorkoutForm.querySelector('[name="custom_workout"]').value.trim();
-        const category = addWorkoutForm.querySelector('[name="category"]').value;
+        const customCategory = addWorkoutForm.querySelector('[name="category"]').value;
 
         const workout = presetWorkout || customWorkout;
+        const category = presetWorkout ? presetCategory : customCategory;
 
         if (!workout) {
             showMessage('Please choose a preset exercise or enter a custom workout.', 'error');
             return;
         }
+
+        if (!category) {
+            showMessage('Please select a category for your custom workout.', 'error');
+            return;
+        }
+
 
         fetch('http://127.0.0.1:5000/data', {
             method: 'POST',
