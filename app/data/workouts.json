@@ -65,5 +65,37 @@
         "category": "Strength",
         "owner": "your_username",
         "is_preset": false
+    },
+    {
+        "id": 10000,
+        "preset_id": 3,
+        "workout": "Chest Press",
+        "category": "Strength",
+        "owner": "admin",
+        "is_preset": false
+    },
+    {
+        "id": 10001,
+        "preset_id": 4,
+        "workout": "Squat",
+        "category": "Strength",
+        "owner": "admin",
+        "is_preset": false
+    },
+    {
+        "id": 10002,
+        "preset_id": 3,
+        "workout": "Chest Press",
+        "category": "Strength",
+        "owner": "admin",
+        "is_preset": false
+    },
+    {
+        "id": 10003,
+        "preset_id": null,
+        "workout": "dsadsa",
+        "category": "Strength",
+        "owner": "admin",
+        "is_preset": false
     }
 ]

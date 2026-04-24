@@ -39,7 +39,7 @@ function updateWorkoutButtons() {
     }
 }
 
-function createWorkout(workout, category) {
+function createWorkout(workout, category, presetId = null) {
     const token = localStorage.getItem('access_token');
 
     if (!token) {
@@ -53,7 +53,7 @@ function createWorkout(workout, category) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ workout, category })
+        body: JSON.stringify({ workout, category, preset_id: presetId })
     })
     .then(response => response.json())
     .then(data => {
@@ -91,7 +91,10 @@ function renderWorkouts(workouts) {
                 <h3 class="workout-title">${workout.workout}</h3>
                 <span class="category-tag">${workout.category}</span>
             </div>
-            <p class="workout-id">Workout ID: ${workout.id}</p>
+            <p class="workout-id">
+                ${workout.preset_id ? `Preset ID: ${workout.preset_id}` : `Workout ID: ${workout.id}`}
+            </p>
+
             <button type="button" class="delete-workout-btn" data-id="${workout.id}">Delete</button>
         </article>
     `).join('');
@@ -251,15 +254,17 @@ if (addWorkoutForm) {
             const selectedOption = presetWorkoutSelect.options[presetWorkoutSelect.selectedIndex];
             const workout = selectedOption.value;
             const category = selectedOption.dataset.category || '';
+            const presetId = Number(selectedOption.dataset.presetId);
 
             if (!workout || !category) {
                 showMessage('Please choose a preset workout.', 'error');
                 return;
             }
 
-            createWorkout(workout, category);
+            createWorkout(workout, category, presetId);
         });
     }
+
 
     if (addCustomButton) {
         addCustomButton.addEventListener('click', function () {
@@ -271,7 +276,8 @@ if (addWorkoutForm) {
                 return;
             }
 
-            createWorkout(workout, category);
+            createWorkout(workout, category, null);
+
         });
     }
     updateWorkoutButtons();

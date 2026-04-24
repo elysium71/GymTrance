@@ -209,6 +209,11 @@ def handle_post():
         return jsonify({"status": "error", "message": "Workout must be non-empty string"}), 400
     if not isinstance(data["category"], str):
         return jsonify({"status": "error", "message": "Category must be string"}), 400
+    
+    preset_id = data.get("preset_id")
+    if preset_id is not None and not isinstance(preset_id, int):
+        return jsonify({"status": "error", "message": "preset_id must be integer"}), 400
+
 
     category = data["category"].strip().title()
     if category not in ALLOWED_CATEGORIES:
@@ -230,10 +235,13 @@ def handle_post():
 
     new_workout = {
         "id": next_id,
+        "preset_id": preset_id,
         "workout": data["workout"].strip(),
         "category": category,
-        "owner": current_user
+        "owner": current_user,
+        "is_preset": False
     }
+
 
 
     workouts.append(new_workout)

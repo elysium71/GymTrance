@@ -54,11 +54,15 @@
                                     <select name="preset_workout" id="preset-workout-select">
                                         <option value="">Choose a preset exercise</option>
                                         {% for workout in preset_workouts %}
-                                            <option value="{{ workout.workout }}" data-category="{{ workout.category }}">
+                                            <option
+                                                value="{{ workout.workout }}"
+                                                data-category="{{ workout.category }}"
+                                                data-preset-id="{{ workout.id }}">
                                                 {{ workout.workout }}
                                             </option>
                                         {% endfor %}
                                     </select>
+                                
 
                                     <button type="button" id="add-preset-btn" disabled>Add Preset Workout</button>
                                 </div>
