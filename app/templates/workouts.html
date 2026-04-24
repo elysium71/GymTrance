@@ -53,17 +53,13 @@
                                     <h3>Preset Workout</h3>
                                     <select name="preset_workout" id="preset-workout-select">
                                         <option value="">Choose a preset exercise</option>
-                                        <option value="Bench Press" data-category="Strength">Bench Press</option>
-                                        <option value="Deadlift" data-category="Strength">Deadlift</option>
-                                        <option value="Chest Press" data-category="Strength">Chest Press</option>
-                                        <option value="Squat" data-category="Strength">Squat</option>
-                                        <option value="Lat Pulldown" data-category="Strength">Lat Pulldown</option>
-                                        <option value="Treadmill Run" data-category="Cardio">Treadmill Run</option>
-                                        <option value="Cycling" data-category="Cardio">Cycling</option>
-                                        <option value="Jump Rope" data-category="Cardio">Jump Rope</option>
-                                        <option value="Yoga Flow" data-category="Flexibility">Yoga Flow</option>
-                                        <option value="Hamstring Stretch" data-category="Flexibility">Hamstring Stretch</option>
+                                        {% for workout in preset_workouts %}
+                                            <option value="{{ workout.workout }}" data-category="{{ workout.category }}">
+                                                {{ workout.workout }}
+                                            </option>
+                                        {% endfor %}
                                     </select>
+
                                     <button type="button" id="add-preset-btn" disabled>Add Preset Workout</button>
                                 </div>
 

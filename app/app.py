@@ -140,7 +140,10 @@ def login():
 
 @app.route("/workouts")
 def workouts_page():
-    return render_template("workouts.html")
+    workouts = load_workouts()
+    preset_workouts = [w for w in workouts if w.get("is_preset") is True]
+    return render_template("workouts.html", preset_workouts=preset_workouts)
+
 
 
 
