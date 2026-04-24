@@ -92,7 +92,7 @@ function renderWorkouts(workouts) {
                 <span class="category-tag">${workout.category}</span>
             </div>
             <p class="workout-id">
-                ${workout.preset_id ? `Preset ID: ${workout.preset_id}` : `Workout ID: ${workout.id}`}
+                ${workout.preset_id ? `Preset ID: ${workout.preset_id}` : `Custom ID: ${workout.id}`}
             </p>
 
             <button type="button" class="delete-workout-btn" data-id="${workout.id}">Delete</button>

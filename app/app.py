@@ -40,12 +40,17 @@ def custom_expired_token_response(jwt_header, jwt_payload):
         "message": "Token has expired. Please log in again."
     }), 401
 
-DATA_FILE = "data/workouts.json"
+PRESET_FILE = "data/workouts.json"
+WORKOUT_SECTION_FILE = "data/workoutsection.json"
 
-# ensure file exists
 Path("data").mkdir(exist_ok=True)
-if not Path(DATA_FILE).exists():
-    with open(DATA_FILE, "w") as f:
+
+if not Path(PRESET_FILE).exists():
+    with open(PRESET_FILE, "w") as f:
+        f.write("[]")
+
+if not Path(WORKOUT_SECTION_FILE).exists():
+    with open(WORKOUT_SECTION_FILE, "w") as f:
         f.write("[]")
 
 
@@ -140,27 +145,36 @@ def login():
 
 @app.route("/workouts")
 def workouts_page():
-    workouts = load_workouts()
-    preset_workouts = [w for w in workouts if w.get("is_preset") is True]
+    preset_workouts = load_preset_workouts()
+
     return render_template("workouts.html", preset_workouts=preset_workouts)
 
 
 
 
 # load data safely
-def load_workouts():
+def load_preset_workouts():
     try:
-        with open(DATA_FILE, "r") as file:
+        with open(PRESET_FILE, "r") as file:
             return json.load(file)
     except (json.JSONDecodeError, FileNotFoundError):
-        with open(DATA_FILE, "w") as file:
+        with open(PRESET_FILE, "w") as file:
             json.dump([], file)
         return []
 
-# save data
-def save_workouts(workouts):
-    with open(DATA_FILE, "w") as file:
+def load_workout_sections():
+    try:
+        with open(WORKOUT_SECTION_FILE, "r") as file:
+            return json.load(file)
+    except (json.JSONDecodeError, FileNotFoundError):
+        with open(WORKOUT_SECTION_FILE, "w") as file:
+            json.dump([], file)
+        return []
+
+def save_workout_sections(workouts):
+    with open(WORKOUT_SECTION_FILE, "w") as file:
         json.dump(workouts, file, indent=4)
+
 
 @app.route("/")
 def index():
@@ -172,9 +186,9 @@ def index():
 @jwt_required()
 def get_data():
     current_user = get_jwt_identity()
-    workouts = load_workouts()
-
+    workouts = load_workout_sections()
     user_workouts = [w for w in workouts if w.get("owner") == current_user]
+
 
     category = (request.args.get("category") or "").strip()
     keyword = (request.args.get("q") or "").strip().lower()
@@ -223,7 +237,7 @@ def handle_post():
         }), 400
 
     current_user = get_jwt_identity()
-    workouts = load_workouts()
+    workouts = load_workout_sections()
 
     custom_ids = [
         item.get("id", 0)
@@ -245,7 +259,7 @@ def handle_post():
 
 
     workouts.append(new_workout)
-    save_workouts(workouts)
+    save_workout_sections(workouts)
 
     return jsonify({
         "status": "success",
@@ -267,7 +281,7 @@ def update_workout(workout_id):
         return jsonify({"status": "error", "message": "Nothing to update"}), 400
 
     current_user = get_jwt_identity()
-    workouts = load_workouts()
+    workouts = load_workout_sections()
     workout_to_update = None
 
     for w in workouts:
@@ -300,7 +314,7 @@ def update_workout(workout_id):
     if not workout_to_update:
         return jsonify({"status": "error", "message": "Workout not found"}), 404
 
-    save_workouts(workouts)
+    save_workout_sections(workouts)
 
     return jsonify({
         "status": "success",
@@ -315,7 +329,7 @@ def update_workout(workout_id):
 @jwt_required()
 def delete_workout(workout_id):
     current_user = get_jwt_identity()
-    workouts = load_workouts()
+    workouts = load_workout_sections()
 
     workout_to_delete = None
     for w in workouts:
@@ -332,7 +346,8 @@ def delete_workout(workout_id):
         return jsonify({"status": "error", "message": "Workout not found"}), 404
 
     workouts.remove(workout_to_delete)
-    save_workouts(workouts)
+    save_workout_sections(workouts)
+
 
     return jsonify({
         "status": "success",
