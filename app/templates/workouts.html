@@ -45,18 +45,34 @@
                         <div class="panel add-panel">
                             <div class="panel-heading">
                                 <h2>Add Workout</h2>
-                                <p>Save a new session to your account.</p>
+                                <p>Choose a built-in exercise or create your own custom one.</p>
                             </div>
 
                             <form id="add-workout-form" class="stack-form">
-                                <input type="number" name="id" placeholder="Workout ID" required>
-                                <input type="text" name="workout" placeholder="Workout name" required>
+
+                                <select name="preset_workout">
+                                    <option value="">Choose a preset exercise</option>
+                                    <option value="Bench Press">Bench Press</option>
+                                    <option value="Deadlift">Deadlift</option>
+                                    <option value="Chest Press">Chest Press</option>
+                                    <option value="Squat">Squat</option>
+                                    <option value="Lat Pulldown">Lat Pulldown</option>
+                                    <option value="Treadmill Run">Treadmill Run</option>
+                                    <option value="Cycling">Cycling</option>
+                                    <option value="Jump Rope">Jump Rope</option>
+                                    <option value="Yoga Flow">Yoga Flow</option>
+                                    <option value="Hamstring Stretch">Hamstring Stretch</option>
+                                </select>
+
+                                <input type="text" name="custom_workout" placeholder="Or type a custom workout">
+
                                 <select name="category" required>
                                     <option value="">Select category</option>
                                     <option value="Strength">Strength</option>
                                     <option value="Cardio">Cardio</option>
                                     <option value="Flexibility">Flexibility</option>
                                 </select>
+
                                 <button type="submit">Add Workout</button>
                             </form>
                         </div>

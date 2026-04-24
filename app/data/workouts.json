@@ -59,13 +59,29 @@
         "category": "Flexibility",
         "is_preset": true
     },
-
     {
-    "id": 101,
-    "workout": "My Custom Push Day",
-    "category": "Strength",
-    "owner": "your_username",
-    "is_preset": false
+        "id": 101,
+        "workout": "My Custom Push Day",
+        "category": "Strength",
+        "owner": "your_username",
+        "is_preset": false
+    },
+    {
+        "id": 10000,
+        "workout": "dsadsa",
+        "category": "Strength",
+        "owner": "admin"
+    },
+    {
+        "id": 10001,
+        "workout": "cdcsdcdsc",
+        "category": "Strength",
+        "owner": "admin"
+    },
+    {
+        "id": 10002,
+        "workout": "Deadlift",
+        "category": "Strength",
+        "owner": "admin"
     }
-
 ]

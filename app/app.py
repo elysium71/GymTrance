@@ -200,10 +200,8 @@ def handle_post():
 
     if not data:
         return jsonify({"status": "error", "message": "No data provided"}), 400
-    if "id" not in data or "workout" not in data or "category" not in data:
+    if "workout" not in data or "category" not in data:
         return jsonify({"status": "error", "message": "Missing fields"}), 400
-    if not isinstance(data["id"], int):
-        return jsonify({"status": "error", "message": "ID must be integer"}), 400
     if not isinstance(data["workout"], str) or not data["workout"].strip():
         return jsonify({"status": "error", "message": "Workout must be non-empty string"}), 400
     if not isinstance(data["category"], str):
@@ -219,15 +217,21 @@ def handle_post():
     current_user = get_jwt_identity()
     workouts = load_workouts()
 
-    if any(item.get("id") == data["id"] for item in workouts):
-        return jsonify({"status": "error", "message": "Workout id already existed"}), 400
+    custom_ids = [
+        item.get("id", 0)
+        for item in workouts
+        if isinstance(item.get("id"), int) and item.get("id") >= 10000
+    ]
+
+    next_id = max(custom_ids, default=9999) + 1
 
     new_workout = {
-        "id": data["id"],
+        "id": next_id,
         "workout": data["workout"].strip(),
         "category": category,
         "owner": current_user
     }
+
 
     workouts.append(new_workout)
     save_workouts(workouts)

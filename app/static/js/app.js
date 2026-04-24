@@ -117,7 +117,6 @@ function deleteWorkout(workoutId) {
     });
 }
 
-
 if (registerForm) {
     registerForm.addEventListener('submit', function (event) {
         event.preventDefault();
@@ -194,9 +193,16 @@ if (addWorkoutForm) {
             return;
         }
 
-        const id = Number(addWorkoutForm.querySelector('[name="id"]').value);
-        const workout = addWorkoutForm.querySelector('[name="workout"]').value.trim();
+        const presetWorkout = addWorkoutForm.querySelector('[name="preset_workout"]').value;
+        const customWorkout = addWorkoutForm.querySelector('[name="custom_workout"]').value.trim();
         const category = addWorkoutForm.querySelector('[name="category"]').value;
+
+        const workout = presetWorkout || customWorkout;
+
+        if (!workout) {
+            showMessage('Please choose a preset exercise or enter a custom workout.', 'error');
+            return;
+        }
 
         fetch('http://127.0.0.1:5000/data', {
             method: 'POST',
@@ -204,7 +210,7 @@ if (addWorkoutForm) {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ id, workout, category })
+            body: JSON.stringify({ workout, category })
         })
         .then(response => response.json())
         .then(data => {
@@ -229,8 +235,6 @@ if (logoutButton) {
         window.location.href = '/';
     });
 }
-
-
 
 if (window.location.pathname === '/workouts') {
     if (!savedToken) {
