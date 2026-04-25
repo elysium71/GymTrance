@@ -11,7 +11,7 @@ const customCategorySelect = document.querySelector('#custom-category-select');
 const addPresetButton = document.querySelector('#add-preset-btn');
 const addCustomButton = document.querySelector('#add-custom-btn');
 const finishWorkoutButton = document.querySelector('#finish-workout-btn');
-
+const historyList = document.querySelector('#history-list');
 const savedToken = localStorage.getItem('access_token');
 
 function showMessage(message, type) {
@@ -513,10 +513,100 @@ if (logoutButton) {
     });
 }
 
-if (window.location.pathname === '/workouts') {
+if (window.location.pathname === '/workouts/current') {
     if (!savedToken) {
         window.location.href = '/';
     } else {
         loadWorkouts();
     }
+}
+
+if (window.location.pathname === '/workouts/history') {
+    if (!savedToken) {
+        window.location.href = '/';
+    } else {
+        loadWorkoutHistory();
+    }
+}
+
+if (window.location.pathname === '/workouts') {
+    if (!savedToken) {
+        window.location.href = '/';
+    }
+}
+
+
+function renderWorkoutHistory(historyItems) {
+    if (!historyList) {
+        return;
+    }
+
+    if (!historyItems || historyItems.length === 0) {
+        historyList.innerHTML = '<p class="empty-state">No past workouts found yet.</p>';
+        return;
+    }
+
+    const historyHtml = historyItems.map((session, index) => `
+        <article class="workout-card">
+            <div class="workout-card-header">
+                <h3 class="workout-title">Workout Session ${index + 1}</h3>
+                <span class="category-tag">Completed</span>
+            </div>
+
+            <div class="history-session-list">
+                ${session.completed_workout.map(workout => `
+                    <div class="history-workout-item">
+                        <p><strong>${workout.workout}</strong> - ${workout.category}</p>
+
+                        ${workout.category === 'Strength' ? `
+                            ${Array.isArray(workout.set_details) && workout.set_details.length > 0 ? `
+                                <div class="history-set-list">
+                                    ${workout.set_details.map((setItem, setIndex) => `
+                                        <p>Set ${setIndex + 1}: ${setItem.reps} reps${setItem.kg !== undefined ? `, ${setItem.kg} kg` : ''}</p>
+                                    `).join('')}
+                                </div>
+                            ` : Array.isArray(workout.reps) && workout.reps.length > 0 ? `
+                                <div class="history-set-list">
+                                    ${workout.reps.map((rep, setIndex) => `
+                                        <p>Set ${setIndex + 1}: ${rep} reps</p>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        ` : ''}
+
+                    </div>
+                `).join('')}
+            </div>
+        </article>
+    `).join('');
+
+    historyList.innerHTML = historyHtml;
+}
+
+function loadWorkoutHistory() {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch('http://127.0.0.1:5000/history-data', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            renderWorkoutHistory(data.data);
+        } else {
+            showMessage(data.message || 'Failed to load workout history.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Load history error:', error);
+        showMessage('Failed to load workout history.', 'error');
+    });
 }

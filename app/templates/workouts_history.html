@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Workout History - GymTrance</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    </head>
+    <body>
+        <div class="page-shell">
+            <header class="hero">
+                <div class="hero-copy">
+                    <p class="eyebrow">History</p>
+                    <h1>Past Workouts</h1>
+                    <p class="hero-text">
+                        Review your completed workout sessions here.
+                    </p>
+                </div>
+
+                <div class="hero-side">
+                    <button type="button" id="logout-btn" class="ghost-btn hero-logout">Logout</button>
+
+                    <div class="hero-badge">
+                        <span class="badge-label">Archive</span>
+                        <strong>Workout History</strong>
+                    </div>
+                </div>
+            </header>
+
+            <main class="dashboard">
+                <section class="panel content-panel">
+                    <div id="message-box" class="message-box"></div>
+
+                    <div class="section-header workout-header">
+                        <div>
+                            <p class="section-label">History</p>
+                            <h2>Completed Workouts</h2>
+                        </div>
+                    </div>
+
+                    <div id="history-list" class="workout-list"></div>
+                </section>
+            </main>
+        </div>
+
+        <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    </body>
+</html>

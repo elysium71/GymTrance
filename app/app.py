@@ -165,10 +165,17 @@ def login():
 
 
 @app.route("/workouts")
-def workouts_page():
-    preset_workouts = load_preset_workouts()
-    return render_template("workouts.html", preset_workouts=preset_workouts)
+def workouts_home():
+    return render_template("workouts_home.html")
 
+@app.route("/workouts/current")
+def current_workout_page():
+    preset_workouts = load_preset_workouts()
+    return render_template("workouts_current.html", preset_workouts=preset_workouts)
+
+@app.route("/workouts/history")
+def workout_history_page():
+    return render_template("workouts_history.html")
 
 
 
@@ -212,6 +219,21 @@ def save_workout_history(history):
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/history-data", methods=["GET"])
+@jwt_required()
+def get_history_data():
+    current_user = get_jwt_identity()
+    history = load_workout_history()
+
+    user_history = [item for item in history if item.get("owner") == current_user]
+
+    return jsonify({
+        "status": "success",
+        "message": "Workout history retrieved",
+        "data": user_history
+    }), 200
 
 # GET all workouts
 

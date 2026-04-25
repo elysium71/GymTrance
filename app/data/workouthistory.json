@@ -27,5 +27,59 @@
                 "is_preset": false
             }
         ]
+    },
+    {
+        "owner": "admin",
+        "completed_workout": [
+            {
+                "id": 10000,
+                "preset_id": 1,
+                "workout": "Bench Press",
+                "category": "Strength",
+                "owner": "admin",
+                "is_preset": false,
+                "sets": 2,
+                "reps": [
+                    1,
+                    1
+                ],
+                "set_details": [
+                    {
+                        "reps": 1,
+                        "kg": 3
+                    },
+                    {
+                        "reps": 1,
+                        "kg": 3
+                    }
+                ]
+            },
+            {
+                "id": 10001,
+                "preset_id": 4,
+                "workout": "Squat",
+                "category": "Strength",
+                "owner": "admin",
+                "is_preset": false,
+                "sets": 1,
+                "reps": [
+                    4
+                ],
+                "set_details": [
+                    {
+                        "reps": 4,
+                        "kg": 3
+                    }
+                ]
+            },
+            {
+                "id": 10002,
+                "preset_id": 7,
+                "workout": "Cycling",
+                "category": "Cardio",
+                "owner": "admin",
+                "is_preset": false
+            }
+        ]
     }
 ]
