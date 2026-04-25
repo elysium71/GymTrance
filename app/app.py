@@ -36,7 +36,7 @@ ALLOWED_CATEGORIES = {"Strength", "Cardio", "Flexibility"}
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # secret key
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)  # Set token expiration
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=30)  # Set token expiration
 jwt = JWTManager(app)
 # Custom response for unauthorized access
 
