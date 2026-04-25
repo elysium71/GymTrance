@@ -92,26 +92,27 @@ function renderWorkouts(workouts) {
                 ? workout.reps.map(rep => ({ reps: rep, kg: '' }))
                 : [{ reps: '', kg: '' }];
 
-        const setRows = setEntries.map((setEntry, index) => `
-            <div class="set-row">
-                <span class="set-label">Set ${index + 1}</span>
-                <input
-                    type="number"
-                    class="reps-field"
-                    data-id="${workout.id}"
-                    placeholder="Reps"
-                    min="1"
-                    value="${setEntry.reps || ''}">
-                <input
-                    type="number"
-                    class="kg-field"
-                    data-id="${workout.id}"
-                    placeholder="KG"
-                    min="0"
-                    value="${setEntry.kg || ''}">
-                <button type="button" class="remove-set-btn" data-id="${workout.id}">Delete Set</button>
-            </div>
-        `).join('');
+                const setRows = setEntries.map((setEntry, index) => `
+                    <div class="set-row">
+                        <div class="set-label">Set ${index + 1}</div>
+                        <input
+                            type="number"
+                            class="reps-field"
+                            data-id="${workout.id}"
+                            placeholder="Reps"
+                            min="1"
+                            value="${setEntry.reps || ''}">
+                        <input
+                            type="number"
+                            class="kg-field"
+                            data-id="${workout.id}"
+                            placeholder="KG"
+                            min="0"
+                            value="${setEntry.kg || ''}">
+                        <button type="button" class="remove-set-btn" data-id="${workout.id}">Delete Set</button>
+                    </div>
+                `).join('');
+
 
 
         return `
@@ -306,25 +307,23 @@ function addSetRow(workoutId) {
     const nextSetNumber = setList.querySelectorAll('.set-row').length + 1;
 
     const row = document.createElement('div');
-        row.innerHTML = `
-            <span class="set-label">Set ${nextSetNumber}</span>
-            <input
-                type="number"
-                class="reps-field"
-                data-id="${workoutId}"
-                placeholder="Reps"
-                min="1"
-                value="">
-            <input
-                type="number"
-                class="kg-field"
-                data-id="${workoutId}"
-                placeholder="KG"
-                min="0"
-                value="">
-            <button type="button" class="remove-set-btn" data-id="${workoutId}">Delete Set</button>
-        `;
-
+    row.className = 'set-row';
+    row.innerHTML = `
+        <div class="set-label">Set ${nextSetNumber}</div>
+        <input
+            type="number"
+            class="reps-field"
+            data-id="${workoutId}"
+            placeholder="Reps"
+            min="1">
+        <input
+            type="number"
+            class="kg-field"
+            data-id="${workoutId}"
+            placeholder="KG"
+            min="0">
+        <button type="button" class="remove-set-btn" data-id="${workoutId}">Delete Set</button>
+    `;
 
     setList.appendChild(row);
 
@@ -332,6 +331,7 @@ function addSetRow(workoutId) {
         removeSetRow(this);
     });
 }
+
 
 function removeSetRow(button) {
     const row = button.closest('.set-row');

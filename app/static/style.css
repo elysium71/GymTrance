@@ -362,27 +362,38 @@ button:disabled:hover {
 
 .set-row {
     display: grid;
-    grid-template-columns: 80px 1fr 1fr auto;
-    gap: 10px;
+    grid-template-columns: 90px minmax(140px, 1fr) minmax(140px, 1fr) 150px;
+    gap: 12px;
     align-items: center;
+}
+
+.set-row > * {
+    min-width: 0;
 }
 
 .set-label {
     color: var(--muted);
-    font-size: 0.9rem;
+    font-size: 0.95rem;
 }
 
-.strength-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
+.set-row input {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
 }
 
-.add-set-btn {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--text);
-    border: 1px solid var(--line);
+.remove-set-btn {
+    width: 150px;
+    margin: 0;
+    background: rgba(255, 95, 109, 0.16);
+    color: #ffb8bf;
+    border: 1px solid rgba(255, 95, 109, 0.3);
 }
+
+.remove-set-btn:hover {
+    background: rgba(255, 95, 109, 0.24);
+}
+
 
 .save-strength-btn {
     background: rgba(61, 220, 151, 0.16);
@@ -400,13 +411,34 @@ button:disabled:hover {
     border: 1px solid rgba(255, 95, 109, 0.3);
 }
 
-.remove-set-btn:hover {
-    background: rgba(255, 95, 109, 0.24);
-}
 
 
 .save-strength-btn:hover {
     background: rgba(61, 220, 151, 0.24);
+}
+
+@media (max-width: 900px) {
+    .set-row {
+        grid-template-columns: 1fr;
+    }
+
+    .set-label {
+        margin-bottom: -4px;
+    }
+
+    .remove-set-btn,
+    .save-strength-btn,
+    .add-set-btn {
+        width: 100%;
+    }
+    .set-row input {
+        width: 100%;
+        min-width: 0;
+    }
+    .remove-set-btn {
+        width: auto;
+        min-width: 140px;
+    }
 }
 
 
@@ -430,3 +462,14 @@ button:disabled:hover {
 
 
 
+@media (max-width: 900px) {
+    .set-row {
+        grid-template-columns: 1fr;
+    }
+
+    .remove-set-btn,
+    .save-strength-btn,
+    .add-set-btn {
+        width: 100%;
+    }
+}
