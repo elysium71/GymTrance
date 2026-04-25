@@ -95,6 +95,26 @@ function renderWorkouts(workouts) {
                 ${workout.preset_id ? `Preset ID: ${workout.preset_id}` : `Custom ID: ${workout.id}`}
             </p>
 
+            ${workout.category === 'Strength' ? `
+                <div class="strength-editor">
+                    <input
+                        type="number"
+                        class="sets-field"
+                        data-id="${workout.id}"
+                        placeholder="Sets"
+                        min="1"
+                        value="${workout.sets || ''}">
+                    <input
+                        type="number"
+                        class="reps-field"
+                        data-id="${workout.id}"
+                        placeholder="Reps"
+                        min="1"
+                        value="${workout.reps || ''}">
+                    <button type="button" class="save-strength-btn" data-id="${workout.id}">Save</button>
+                </div>
+            ` : ''}
+
             <button type="button" class="delete-workout-btn" data-id="${workout.id}">Delete</button>
         </article>
     `).join('');
@@ -102,13 +122,23 @@ function renderWorkouts(workouts) {
     workoutList.innerHTML = workoutHtml;
 
     const deleteButtons = document.querySelectorAll('.delete-workout-btn');
-
     deleteButtons.forEach(button => {
         button.addEventListener('click', function () {
             deleteWorkout(button.dataset.id);
         });
     });
+
+    const saveButtons = document.querySelectorAll('.save-strength-btn');
+    saveButtons.forEach(button => {
+        button.addEventListener('click', function () {
+            const workoutId = button.dataset.id;
+            const sets = document.querySelector(`.sets-field[data-id="${workoutId}"]`).value;
+            const reps = document.querySelector(`.reps-field[data-id="${workoutId}"]`).value;
+            saveStrengthWorkout(workoutId, sets, reps);
+        });
+    });
 }
+
 
 function loadWorkouts() {
     const token = localStorage.getItem('access_token');
@@ -170,6 +200,46 @@ function deleteWorkout(workoutId) {
         showMessage('Failed to delete workout.', 'error');
     });
 }
+
+function saveStrengthWorkout(workoutId, sets, reps) {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    if (!sets || !reps) {
+        showMessage('Please enter both sets and reps.', 'error');
+        return;
+    }
+
+    fetch(`http://127.0.0.1:5000/data/${workoutId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            sets: Number(sets),
+            reps: Number(reps)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage('Strength workout updated successfully!', 'success');
+            loadWorkouts();
+        } else {
+            showMessage(data.message || 'Failed to update workout.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Save strength workout error:', error);
+        showMessage('Failed to update workout.', 'error');
+    });
+}
+
 
 if (registerForm) {
     registerForm.addEventListener('submit', function (event) {

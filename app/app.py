@@ -277,8 +277,9 @@ def update_workout(workout_id):
 
     if not data:
         return jsonify({"status": "error", "message": "No data provided"}), 400
-    if "workout" not in data and "category" not in data:
+    if "workout" not in data and "category" not in data and "sets" not in data and "reps" not in data:
         return jsonify({"status": "error", "message": "Nothing to update"}), 400
+
 
     current_user = get_jwt_identity()
     workouts = load_workout_sections()
@@ -307,6 +308,16 @@ def update_workout(workout_id):
                         "message": f"Invalid category. Allowed: {', '.join(sorted(ALLOWED_CATEGORIES))}"
                     }), 400
                 w["category"] = category
+                
+            if "sets" in data:
+                if not isinstance(data["sets"], int) or data["sets"] <= 0:
+                    return jsonify({"status": "error", "message": "Sets must be a positive integer"}), 400
+                w["sets"] = data["sets"]
+
+            if "reps" in data:
+                if not isinstance(data["reps"], int) or data["reps"] <= 0:
+                    return jsonify({"status": "error", "message": "Reps must be a positive integer"}), 400
+                w["reps"] = data["reps"]
 
             workout_to_update = w
             break

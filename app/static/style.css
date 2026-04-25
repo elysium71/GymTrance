@@ -349,6 +349,23 @@ button:disabled:hover {
     background: rgba(255, 95, 109, 0.24);
 }
 
+.strength-editor {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.save-strength-btn {
+    background: rgba(61, 220, 151, 0.16);
+    color: #b8ffe0;
+    border: 1px solid rgba(61, 220, 151, 0.3);
+}
+
+.save-strength-btn:hover {
+    background: rgba(61, 220, 151, 0.24);
+}
+
 
 @media (max-width: 640px) {
     .page-shell {

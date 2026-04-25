@@ -13,7 +13,9 @@
         "workout": "Shoulder Press",
         "category": "Strength",
         "owner": "admin",
-        "is_preset": false
+        "is_preset": false,
+        "sets": 2,
+        "reps": 4
     },
     {
         "id": 10002,
