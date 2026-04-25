@@ -321,6 +321,34 @@ def update_workout(workout_id):
                     return jsonify({"status": "error", "message": "Each rep value must be a positive integer"}), 400
                 w["reps"] = data["reps"]
                 w["sets"] = len(data["reps"])
+            
+            if "set_details" in data:
+                if not isinstance(data["set_details"], list) or not data["set_details"]:
+                    return jsonify({"status": "error", "message": "set_details must be a non-empty list"}), 400
+
+                cleaned_sets = []
+                for set_item in data["set_details"]:
+                    if not isinstance(set_item, dict):
+                        return jsonify({"status": "error", "message": "Each set must be an object"}), 400
+
+                    reps = set_item.get("reps")
+                    kg = set_item.get("kg", 0)
+
+                    if not isinstance(reps, int) or reps <= 0:
+                        return jsonify({"status": "error", "message": "Each set reps must be a positive integer"}), 400
+
+                    if not isinstance(kg, (int, float)) or kg < 0:
+                        return jsonify({"status": "error", "message": "Each set kg must be zero or positive"}), 400
+
+                    cleaned_sets.append({
+                        "reps": reps,
+                        "kg": kg
+                    })
+
+                w["set_details"] = cleaned_sets
+                w["sets"] = len(cleaned_sets)
+                w["reps"] = [item["reps"] for item in cleaned_sets]
+
 
 
             workout_to_update = w

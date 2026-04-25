@@ -86,37 +86,33 @@ function renderWorkouts(workouts) {
     }
 
     const workoutHtml = workouts.map(workout => {
-        const repValues = Array.isArray(workout.reps)
-            ? workout.reps
-            : (workout.category === 'Strength' && workout.reps ? [workout.reps] : []);
+        const setEntries = Array.isArray(workout.set_details) && workout.set_details.length > 0
+            ? workout.set_details
+            : Array.isArray(workout.reps) && workout.reps.length > 0
+                ? workout.reps.map(rep => ({ reps: rep, kg: '' }))
+                : [{ reps: '', kg: '' }];
 
-        const setRows = repValues.length > 0
-            ? repValues.map((rep, index) => `
-                <div class="set-row">
-                    <span class="set-label">Set ${index + 1}</span>
-                    <input
-                        type="number"
-                        class="reps-field"
-                        data-id="${workout.id}"
-                        placeholder="Reps"
-                        min="1"
-                        value="${rep}">
-                    <button type="button" class="remove-set-btn" data-id="${workout.id}">Delete Set</button>
-                </div>
-            `).join('')
-            : `
-                <div class="set-row">
-                    <span class="set-label">Set 1</span>
-                    <input
-                        type="number"
-                        class="reps-field"
-                        data-id="${workout.id}"
-                        placeholder="Reps"
-                        min="1"
-                        value="">
-                    <button type="button" class="remove-set-btn" data-id="${workout.id}">Delete Set</button>
-                </div>
-            `;
+        const setRows = setEntries.map((setEntry, index) => `
+            <div class="set-row">
+                <span class="set-label">Set ${index + 1}</span>
+                <input
+                    type="number"
+                    class="reps-field"
+                    data-id="${workout.id}"
+                    placeholder="Reps"
+                    min="1"
+                    value="${setEntry.reps || ''}">
+                <input
+                    type="number"
+                    class="kg-field"
+                    data-id="${workout.id}"
+                    placeholder="KG"
+                    min="0"
+                    value="${setEntry.kg || ''}">
+                <button type="button" class="remove-set-btn" data-id="${workout.id}">Delete Set</button>
+            </div>
+        `).join('');
+
 
         return `
             <article class="workout-card">
@@ -168,14 +164,22 @@ function renderWorkouts(workouts) {
     document.querySelectorAll('.save-strength-btn').forEach(button => {
         button.addEventListener('click', function () {
             const workoutId = button.dataset.id;
-            const repInputs = document.querySelectorAll(`.reps-field[data-id="${workoutId}"]`);
-            const reps = Array.from(repInputs)
-                .map(input => Number(input.value))
-                .filter(value => value > 0);
+            const rows = document.querySelectorAll(`.set-row .reps-field[data-id="${workoutId}"]`);
 
-            saveStrengthWorkout(workoutId, reps);
+            const setDetails = Array.from(rows).map(repsInput => {
+                const row = repsInput.closest('.set-row');
+                const kgInput = row.querySelector(`.kg-field[data-id="${workoutId}"]`);
+
+                return {
+                    reps: Number(repsInput.value),
+                    kg: kgInput.value ? Number(kgInput.value) : 0
+                };
+            }).filter(setItem => setItem.reps > 0);
+
+            saveStrengthWorkout(workoutId, setDetails);
         });
     });
+
 
 
 
@@ -252,7 +256,7 @@ function deleteWorkout(workoutId) {
     });
 }
 
-function saveStrengthWorkout(workoutId, reps) {
+function saveStrengthWorkout(workoutId, setDetails) {
     const token = localStorage.getItem('access_token');
 
     if (!token) {
@@ -260,7 +264,7 @@ function saveStrengthWorkout(workoutId, reps) {
         return;
     }
 
-    if (!Array.isArray(reps) || reps.length === 0) {
+    if (!Array.isArray(setDetails) || setDetails.length === 0) {
         showMessage('Please add at least one set with reps.', 'error');
         return;
     }
@@ -272,8 +276,9 @@ function saveStrengthWorkout(workoutId, reps) {
             'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-            sets: reps.length,
-            reps: reps
+            sets: setDetails.length,
+            reps: setDetails.map(setItem => setItem.reps),
+            set_details: setDetails
         })
     })
     .then(response => response.json())
@@ -291,6 +296,7 @@ function saveStrengthWorkout(workoutId, reps) {
     });
 }
 
+
 function addSetRow(workoutId) {
     const setList = document.querySelector(`.set-list[data-id="${workoutId}"]`);
     if (!setList) {
@@ -300,18 +306,25 @@ function addSetRow(workoutId) {
     const nextSetNumber = setList.querySelectorAll('.set-row').length + 1;
 
     const row = document.createElement('div');
-    row.className = 'set-row';
-    row.innerHTML = `
-        <span class="set-label">Set ${nextSetNumber}</span>
-        <input
-            type="number"
-            class="reps-field"
-            data-id="${workoutId}"
-            placeholder="Reps"
-            min="1"
-            value="">
-        <button type="button" class="remove-set-btn" data-id="${workoutId}">Delete Set</button>
-    `;
+        row.innerHTML = `
+            <span class="set-label">Set ${nextSetNumber}</span>
+            <input
+                type="number"
+                class="reps-field"
+                data-id="${workoutId}"
+                placeholder="Reps"
+                min="1"
+                value="">
+            <input
+                type="number"
+                class="kg-field"
+                data-id="${workoutId}"
+                placeholder="KG"
+                min="0"
+                value="">
+            <button type="button" class="remove-set-btn" data-id="${workoutId}">Delete Set</button>
+        `;
+
 
     setList.appendChild(row);
 
