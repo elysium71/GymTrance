@@ -121,9 +121,6 @@ function renderWorkouts(workouts) {
                     <h3 class="workout-title">${workout.workout}</h3>
                     <span class="category-tag">${workout.category}</span>
                 </div>
-                <p class="workout-id">
-                    ${workout.preset_id ? `Preset ID: ${workout.preset_id}` : `Custom ID: ${workout.id}`}
-                </p>
 
                 ${workout.category === 'Strength' ? `
                     <div class="strength-editor" data-id="${workout.id}">
