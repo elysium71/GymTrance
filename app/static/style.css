@@ -351,9 +351,37 @@ button:disabled:hover {
 
 .strength-editor {
     display: grid;
-    grid-template-columns: 1fr 1fr auto;
-    gap: 10px;
+    gap: 12px;
     margin-top: 14px;
+}
+
+.set-list {
+    display: grid;
+    gap: 10px;
+}
+
+.set-row {
+    display: grid;
+    grid-template-columns: 80px 1fr auto;
+    gap: 10px;
+    align-items: center;
+}
+
+.set-label {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.strength-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.add-set-btn {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    border: 1px solid var(--line);
 }
 
 .save-strength-btn {
@@ -361,6 +389,21 @@ button:disabled:hover {
     color: #b8ffe0;
     border: 1px solid rgba(61, 220, 151, 0.3);
 }
+
+.save-strength-btn:hover {
+    background: rgba(61, 220, 151, 0.24);
+}
+
+.remove-set-btn {
+    background: rgba(255, 95, 109, 0.16);
+    color: #ffb8bf;
+    border: 1px solid rgba(255, 95, 109, 0.3);
+}
+
+.remove-set-btn:hover {
+    background: rgba(255, 95, 109, 0.24);
+}
+
 
 .save-strength-btn:hover {
     background: rgba(61, 220, 151, 0.24);

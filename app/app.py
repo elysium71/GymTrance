@@ -308,16 +308,20 @@ def update_workout(workout_id):
                         "message": f"Invalid category. Allowed: {', '.join(sorted(ALLOWED_CATEGORIES))}"
                     }), 400
                 w["category"] = category
-                
+
             if "sets" in data:
                 if not isinstance(data["sets"], int) or data["sets"] <= 0:
                     return jsonify({"status": "error", "message": "Sets must be a positive integer"}), 400
                 w["sets"] = data["sets"]
 
             if "reps" in data:
-                if not isinstance(data["reps"], int) or data["reps"] <= 0:
-                    return jsonify({"status": "error", "message": "Reps must be a positive integer"}), 400
+                if not isinstance(data["reps"], list) or not data["reps"]:
+                    return jsonify({"status": "error", "message": "Reps must be a non-empty list"}), 400
+                if not all(isinstance(rep, int) and rep > 0 for rep in data["reps"]):
+                    return jsonify({"status": "error", "message": "Each rep value must be a positive integer"}), 400
                 w["reps"] = data["reps"]
+                w["sets"] = len(data["reps"])
+
 
             workout_to_update = w
             break

@@ -8,19 +8,17 @@
         "is_preset": false
     },
     {
-        "id": 10001,
-        "preset_id": 11,
-        "workout": "Shoulder Press",
-        "category": "Strength",
-        "owner": "admin",
-        "is_preset": false,
-        "sets": 2,
-        "reps": 4
-    },
-    {
         "id": 10002,
         "preset_id": null,
         "workout": "V-Grip",
+        "category": "Strength",
+        "owner": "admin",
+        "is_preset": false
+    },
+    {
+        "id": 10003,
+        "preset_id": null,
+        "workout": "dsadsa",
         "category": "Strength",
         "owner": "admin",
         "is_preset": false
