@@ -10,7 +10,7 @@ const customWorkoutInput = document.querySelector('#custom-workout-input');
 const customCategorySelect = document.querySelector('#custom-category-select');
 const addPresetButton = document.querySelector('#add-preset-btn');
 const addCustomButton = document.querySelector('#add-custom-btn');
-
+const finishWorkoutButton = document.querySelector('#finish-workout-btn');
 
 const savedToken = localStorage.getItem('access_token');
 
@@ -254,6 +254,36 @@ function deleteWorkout(workoutId) {
     });
 }
 
+function finishWorkout() {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch('http://127.0.0.1:5000/finish-workout', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage('Workout finished successfully!', 'success');
+            loadWorkouts();
+        } else {
+            showMessage(data.message || 'Failed to finish workout.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Finish workout error:', error);
+        showMessage('Failed to finish workout.', 'error');
+    });
+}
+
+
 function saveStrengthWorkout(workoutId, setDetails) {
     const token = localStorage.getItem('access_token');
 
@@ -419,6 +449,12 @@ if (loginForm) {
 if (loadDataButton) {
     loadDataButton.addEventListener('click', function () {
         loadWorkouts();
+    });
+}
+
+if (finishWorkoutButton) {
+    finishWorkoutButton.addEventListener('click', function () {
+        finishWorkout();
     });
 }
 

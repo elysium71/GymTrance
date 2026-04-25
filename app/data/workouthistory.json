@@ -1,0 +1,31 @@
+[
+    {
+        "owner": "admin",
+        "completed_workout": [
+            {
+                "id": 10000,
+                "preset_id": 9,
+                "workout": "Yoga Flow",
+                "category": "Flexibility",
+                "owner": "admin",
+                "is_preset": false
+            },
+            {
+                "id": 10002,
+                "preset_id": null,
+                "workout": "V-Grip",
+                "category": "Strength",
+                "owner": "admin",
+                "is_preset": false
+            },
+            {
+                "id": 10003,
+                "preset_id": null,
+                "workout": "dsadsa",
+                "category": "Strength",
+                "owner": "admin",
+                "is_preset": false
+            }
+        ]
+    }
+]

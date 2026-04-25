@@ -16,73 +16,79 @@
                         View your sessions, add new workouts, and keep your training organized.
                     </p>
                 </div>
-                <div class="hero-badge">
-                    <span class="badge-label">Dashboard</span>
-                    <strong>Active Session</strong>
+
+                <div class="hero-side">
+                    <button type="button" id="logout-btn" class="ghost-btn hero-logout">Logout</button>
+
+                    <div class="hero-badge">
+                        <span class="badge-label">Dashboard</span>
+                        <strong>Active Session</strong>
+                    </div>
                 </div>
             </header>
 
-            <main class="dashboard">
-                <section class="panel content-panel">
+            <main class="dashboard-layout">
+                <section class="panel content-panel workout-column">
                     <div id="message-box" class="message-box"></div>
 
-                    <div class="content-grid">
-                        <div class="workout-panel">
-                            <div class="section-header">
-                                <div>
-                                    <p class="section-label">Dashboard</p>
-                                    <h2>Your Workouts</h2>
-                                </div>
-                                <div class="action-row dashboard-actions">
-                                    <button type="button" id="load-data-btn" class="secondary-btn">Refresh</button>
-                                    <button type="button" id="logout-btn" class="ghost-btn">Logout</button>
-                                </div>
-                            </div>
-
-                            <div id="workout-list" class="workout-list"></div>
+                    <div class="section-header workout-header">
+                        <div>
+                            <p class="section-label">Dashboard</p>
+                            <h2>Your Workouts</h2>
                         </div>
 
-                        <div class="panel add-panel">
-                            <div class="panel-heading">
-                                <h2>Add Workout</h2>
-                                <p>Choose a built-in exercise or create your own custom one.</p>
-                            </div>
-
-                            <form id="add-workout-form" class="stack-form">
-                                <div class="mini-box">
-                                    <h3>Preset Workout</h3>
-                                    <select name="preset_workout" id="preset-workout-select">
-                                        <option value="">Choose a preset exercise</option>
-                                        {% for workout in preset_workouts %}
-                                            <option
-                                                value="{{ workout.workout }}"
-                                                data-category="{{ workout.category }}"
-                                                data-preset-id="{{ workout.id }}">
-                                                {{ workout.workout }}
-                                            </option>
-                                        {% endfor %}
-                                    </select>
-                                
-
-                                    <button type="button" id="add-preset-btn" disabled>Add Preset Workout</button>
-                                </div>
-
-                                <div class="mini-box">
-                                    <h3>Custom Workout</h3>
-                                    <input type="text" name="custom_workout" id="custom-workout-input" placeholder="Type a custom workout">
-                                    <select name="category" id="custom-category-select">
-                                        <option value="">Select category</option>
-                                        <option value="Strength">Strength</option>
-                                        <option value="Cardio">Cardio</option>
-                                        <option value="Flexibility">Flexibility</option>
-                                    </select>
-                                    <button type="button" id="add-custom-btn" disabled>Add Custom Workout</button>
-                                </div>
-                            </form>
-
+                        <div class="dashboard-actions bottom-actions">
+                            <button type="button" id="load-data-btn" class="secondary-btn">Refresh</button>
+                            <button type="button" id="finish-workout-btn" class="secondary-btn">Finish Workout</button>
                         </div>
                     </div>
+
+                    <div id="workout-list" class="workout-list"></div>
                 </section>
+
+                <aside class="panel add-panel add-column">
+                    <div class="panel-heading">
+                        <h2>Add Workout</h2>
+                        <p>Choose a built-in exercise or create your own custom one.</p>
+                    </div>
+
+                    <form id="add-workout-form" class="stack-form">
+                        <div class="mini-box">
+                            <h3>Preset Workout</h3>
+                            <select name="preset_workout" id="preset-workout-select">
+                                <option value="">Choose a preset exercise</option>
+                                {% for workout in preset_workouts %}
+                                    <option
+                                        value="{{ workout.workout }}"
+                                        data-category="{{ workout.category }}"
+                                        data-preset-id="{{ workout.id }}">
+                                        {{ workout.workout }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+
+                            <button type="button" id="add-preset-btn" disabled>Add Preset Workout</button>
+                        </div>
+
+                        <div class="mini-box">
+                            <h3>Custom Workout</h3>
+                            <input type="text" name="custom_workout" id="custom-workout-input" placeholder="Type a custom workout">
+                            <select name="category" id="custom-category-select">
+                                <option value="">Select category</option>
+                                <option value="Strength">Strength</option>
+                                <option value="Cardio">Cardio</option>
+                                <option value="Flexibility">Flexibility</option>
+                            </select>
+
+                            <div id="strength-fields" style="display: none;">
+                                <input type="number" name="sets" id="sets-input" placeholder="Sets" min="1">
+                                <input type="number" name="reps" id="reps-input" placeholder="Reps" min="1">
+                            </div>
+
+                            <button type="button" id="add-custom-btn" disabled>Add Custom Workout</button>
+                        </div>
+                    </form>
+                </aside>
             </main>
         </div>
 

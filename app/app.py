@@ -8,6 +8,27 @@ import sqlite3 #SQL database for user authentication
 import re #for password validation
 from datetime import timedelta 
 
+
+PRESET_FILE = "data/workouts.json"
+WORKOUT_SECTION_FILE = "data/workoutsection.json"
+WORKOUT_HISTORY_FILE = "data/workouthistory.json"
+
+Path("data").mkdir(exist_ok=True)
+
+if not Path(PRESET_FILE).exists():
+    with open(PRESET_FILE, "w") as f:
+        f.write("[]")
+
+if not Path(WORKOUT_SECTION_FILE).exists():
+    with open(WORKOUT_SECTION_FILE, "w") as f:
+        f.write("[]")
+
+if not Path(WORKOUT_HISTORY_FILE).exists():
+    with open(WORKOUT_HISTORY_FILE, "w") as f:
+        f.write("[]")
+
+
+
 # Initialize Flask app and JWT
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "users.db"
@@ -146,7 +167,6 @@ def login():
 @app.route("/workouts")
 def workouts_page():
     preset_workouts = load_preset_workouts()
-
     return render_template("workouts.html", preset_workouts=preset_workouts)
 
 
@@ -175,6 +195,19 @@ def save_workout_sections(workouts):
     with open(WORKOUT_SECTION_FILE, "w") as file:
         json.dump(workouts, file, indent=4)
 
+def load_workout_history():
+    try:
+        with open(WORKOUT_HISTORY_FILE, "r") as file:
+            return json.load(file)
+    except (json.JSONDecodeError, FileNotFoundError):
+        with open(WORKOUT_HISTORY_FILE, "w") as file:
+            json.dump([], file)
+        return []
+
+def save_workout_history(history):
+    with open(WORKOUT_HISTORY_FILE, "w") as file:
+        json.dump(history, file, indent=4)
+
 
 @app.route("/")
 def index():
@@ -187,8 +220,8 @@ def index():
 def get_data():
     current_user = get_jwt_identity()
     workouts = load_workout_sections()
-    user_workouts = [w for w in workouts if w.get("owner") == current_user]
 
+    user_workouts = [w for w in workouts if w.get("owner") == current_user]
 
     category = (request.args.get("category") or "").strip()
     keyword = (request.args.get("q") or "").strip().lower()
@@ -209,6 +242,7 @@ def get_data():
     }), 200
 
 
+
 # POST new workout
 @app.route("/data", methods=["POST"])
 @jwt_required()
@@ -223,11 +257,10 @@ def handle_post():
         return jsonify({"status": "error", "message": "Workout must be non-empty string"}), 400
     if not isinstance(data["category"], str):
         return jsonify({"status": "error", "message": "Category must be string"}), 400
-    
+
     preset_id = data.get("preset_id")
     if preset_id is not None and not isinstance(preset_id, int):
         return jsonify({"status": "error", "message": "preset_id must be integer"}), 400
-
 
     category = data["category"].strip().title()
     if category not in ALLOWED_CATEGORIES:
@@ -256,8 +289,6 @@ def handle_post():
         "is_preset": False
     }
 
-
-
     workouts.append(new_workout)
     save_workout_sections(workouts)
 
@@ -267,6 +298,34 @@ def handle_post():
         "data": new_workout
     }), 201
 
+@app.route("/finish-workout", methods=["POST"])
+@jwt_required()
+def finish_workout():
+    current_user = get_jwt_identity()
+    current_workouts = load_workout_sections()
+    workout_history = load_workout_history()
+
+    user_workouts = [w for w in current_workouts if w.get("owner") == current_user]
+
+    if not user_workouts:
+        return jsonify({
+            "status": "error",
+            "message": "No active workout to finish"
+        }), 400
+
+    workout_history.append({
+        "owner": current_user,
+        "completed_workout": user_workouts
+    })
+    save_workout_history(workout_history)
+
+    remaining_workouts = [w for w in current_workouts if w.get("owner") != current_user]
+    save_workout_sections(remaining_workouts)
+
+    return jsonify({
+        "status": "success",
+        "message": "Workout finished successfully"
+    }), 200
 
 
 # PUT update workout
