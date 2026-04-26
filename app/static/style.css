@@ -175,6 +175,11 @@ select:focus {
     box-shadow: 0 0 0 3px rgba(255, 107, 44, 0.15);
 }
 
+select option {
+    color: #f5f7fb;
+    background: #202733;
+}
+
 button {
     padding: 14px 16px;
     border: none;
@@ -628,6 +633,18 @@ button:disabled:hover {
     font-size: 0.95rem;
 }
 
+.workout-meta {
+    display: grid;
+    gap: 6px;
+    margin-top: 14px;
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+.workout-meta p {
+    margin: 0;
+}
+
 .preset-modal-overlay {
     position: fixed;
     inset: 0;
@@ -643,11 +660,12 @@ button:disabled:hover {
     width: min(720px, 100%);
     max-height: 85vh;
     overflow: auto;
-    padding: 24px;
+    padding: 24px 24px 88px;
     border-radius: 24px;
     background: var(--panel-strong);
     border: 1px solid var(--line);
     box-shadow: var(--shadow);
+    position: relative;
 }
 
 .preset-modal-header {
@@ -656,6 +674,26 @@ button:disabled:hover {
     align-items: flex-start;
     gap: 16px;
     margin-bottom: 18px;
+}
+
+.preset-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.preset-filter {
+    display: grid;
+    gap: 8px;
+}
+
+.preset-filter span {
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
 }
 
 .modal-close-btn {
@@ -678,9 +716,41 @@ button:disabled:hover {
     background: rgba(255, 255, 255, 0.05);
     color: var(--text);
     border: 1px solid var(--line);
+    padding: 16px 18px;
+    border-radius: 16px;
 }
 
 .preset-workout-option small {
     color: var(--muted);
     font-size: 0.82rem;
+}
+
+.preset-workout-option span {
+    font-weight: 700;
+}
+
+.preset-workout-option:hover {
+    border-color: rgba(255, 107, 44, 0.4);
+    background: linear-gradient(135deg, rgba(255, 107, 44, 0.12), rgba(255, 255, 255, 0.04));
+}
+
+.preset-workout-option.is-selected {
+    border-color: rgba(255, 107, 44, 0.65);
+    background: linear-gradient(135deg, rgba(255, 107, 44, 0.2), rgba(255, 255, 255, 0.06));
+    box-shadow: 0 0 0 2px rgba(255, 107, 44, 0.12);
+}
+
+.preset-modal-actions {
+    position: sticky;
+    bottom: -24px;
+    margin-top: 18px;
+    padding: 16px 0 0;
+    border-top: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(23, 29, 39, 0), rgba(23, 29, 39, 0.92) 22%, rgba(23, 29, 39, 1) 100%);
+}
+
+@media (max-width: 760px) {
+    .preset-filter-grid {
+        grid-template-columns: 1fr;
+    }
 }

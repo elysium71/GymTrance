@@ -1,1 +1,31 @@
-[]
+[
+    {
+        "id": 10000,
+        "preset_id": "Neck_Press",
+        "workout": "Neck Press",
+        "equipment": "barbell",
+        "primaryMuscles": [
+            "chest"
+        ],
+        "secondaryMuscles": [
+            "shoulders",
+            "triceps"
+        ],
+        "owner": "admin",
+        "is_preset": false
+    },
+    {
+        "id": 10001,
+        "preset_id": "90_90_Hamstring",
+        "workout": "90/90 Hamstring",
+        "equipment": "body only",
+        "primaryMuscles": [
+            "hamstrings"
+        ],
+        "secondaryMuscles": [
+            "calves"
+        ],
+        "owner": "admin",
+        "is_preset": false
+    }
+]

@@ -60,26 +60,19 @@
                                 Choose Preset Workout
                             </button>
 
-                            <div id="selected-preset-display" class="selected-preset-display">
-                                No preset selected
-                            </div>
-
                             <input type="hidden" id="preset-workout-id">
                             <input type="hidden" id="preset-workout-name">
-                            <input type="hidden" id="preset-workout-category">
-
-                            <button type="button" id="add-preset-btn" disabled>Add Preset Workout</button>
+                            <input type="hidden" id="preset-workout-equipment">
+                            <input type="hidden" id="preset-workout-primary-muscles">
+                            <input type="hidden" id="preset-workout-secondary-muscles">
                         </div>
 
                         <div class="mini-box">
                             <h3>Custom Workout</h3>
                             <input type="text" name="custom_workout" id="custom-workout-input" placeholder="Type a custom workout">
-                            <select name="category" id="custom-category-select">
-                                <option value="">Select category</option>
-                                <option value="Strength">Strength</option>
-                                <option value="Cardio">Cardio</option>
-                                <option value="Flexibility">Flexibility</option>
-                            </select>
+                            <input type="text" name="equipment" id="custom-equipment-input" placeholder="Equipment">
+                            <input type="text" name="primary_muscles" id="custom-primary-muscles-input" placeholder="Primary muscles (comma separated)">
+                            <input type="text" name="secondary_muscles" id="custom-secondary-muscles-input" placeholder="Secondary muscles (comma separated)">
 
                             <button type="button" id="add-custom-btn" disabled>Add Custom Workout</button>
                         </div>
@@ -98,12 +91,37 @@
                     <button type="button" id="close-preset-modal-btn" class="ghost-btn modal-close-btn">Close</button>
                 </div>
 
-                <select id="preset-category-select">
-                    <option value="">All categories</option>
-                    <option value="Strength">Strength</option>
-                    <option value="Cardio">Cardio</option>
-                    <option value="Flexibility">Flexibility</option>
-                </select>
+                <div class="preset-filter-grid">
+                    <label class="preset-filter">
+                        <span>Equipment</span>
+                        <select id="preset-equipment-select">
+                            <option value="">All equipment</option>
+                            {% for equipment in equipment_options %}
+                                <option value="{{ equipment }}">{{ equipment }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+
+                    <label class="preset-filter">
+                        <span>Primary Muscle</span>
+                        <select id="preset-primary-muscle-select">
+                            <option value="">All primary muscles</option>
+                            {% for muscle in primary_muscle_options %}
+                                <option value="{{ muscle }}">{{ muscle }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+
+                    <label class="preset-filter">
+                        <span>Level</span>
+                        <select id="preset-level-select">
+                            <option value="">All levels</option>
+                            {% for level in level_options %}
+                                <option value="{{ level }}">{{ level }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                </div>
 
                 <div id="preset-workout-list" class="preset-workout-list">
                     {% for workout in preset_workouts %}
@@ -111,12 +129,27 @@
                             type="button"
                             class="preset-workout-option"
                             data-id="{{ workout.id }}"
-                            data-name="{{ workout.workout }}"
-                            data-category="{{ workout.category }}">
-                            <span>{{ workout.workout }}</span>
-                            <small>{{ workout.category }}</small>
+                            data-name="{{ workout.name }}"
+                            data-equipment="{{ workout.equipment or '' }}"
+                            data-level="{{ workout.level or '' }}"
+                            data-primary-muscles='{{ workout.primaryMuscles|tojson }}'
+                            data-secondary-muscles='{{ workout.secondaryMuscles|tojson }}'>
+                            <span>{{ workout.name }}</span>
+                            <small>
+                                {{ workout.equipment or 'No equipment listed' }}
+                                {% if workout.primaryMuscles %}
+                                    | {{ workout.primaryMuscles|join(', ') }}
+                                {% endif %}
+                                {% if workout.level %}
+                                    | {{ workout.level }}
+                                {% endif %}
+                            </small>
                         </button>
                     {% endfor %}
+                </div>
+
+                <div class="preset-modal-actions">
+                    <button type="button" id="add-preset-btn" disabled>Add Preset Workout</button>
                 </div>
             </div>
         </div>

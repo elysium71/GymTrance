@@ -20,20 +20,19 @@ WORKOUT_SECTION_FILE = DATA_DIR / "workoutsection.json"
 WORKOUT_HISTORY_FILE = DATA_DIR / "workouthistory.json"
 
 if not PRESET_FILE.exists():
-    with open(PRESET_FILE, "w") as f:
+    with open(PRESET_FILE, "w", encoding="utf-8") as f:
         f.write("[]")
 
 if not WORKOUT_SECTION_FILE.exists():
-    with open(WORKOUT_SECTION_FILE, "w") as f:
+    with open(WORKOUT_SECTION_FILE, "w", encoding="utf-8") as f:
         f.write("[]")
 
 if not WORKOUT_HISTORY_FILE.exists():
-    with open(WORKOUT_HISTORY_FILE, "w") as f:
+    with open(WORKOUT_HISTORY_FILE, "w", encoding="utf-8") as f:
         f.write("[]")
 
 
 # Initialize Flask app and JWT
-ALLOWED_CATEGORIES = {"Strength", "Cardio", "Flexibility"}
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # secret key
@@ -161,7 +160,29 @@ def workouts_home():
 @app.route("/workouts/current")
 def current_workout_page():
     preset_workouts = load_preset_workouts()
-    return render_template("workouts_current.html", preset_workouts=preset_workouts)
+    equipment_options = sorted({
+        workout.get("equipment").strip()
+        for workout in preset_workouts
+        if isinstance(workout.get("equipment"), str) and workout.get("equipment").strip()
+    })
+    primary_muscle_options = sorted({
+        muscle.strip()
+        for workout in preset_workouts
+        for muscle in workout.get("primaryMuscles", [])
+        if isinstance(muscle, str) and muscle.strip()
+    })
+    level_options = sorted({
+        workout.get("level").strip()
+        for workout in preset_workouts
+        if isinstance(workout.get("level"), str) and workout.get("level").strip()
+    })
+    return render_template(
+        "workouts_current.html",
+        preset_workouts=preset_workouts,
+        equipment_options=equipment_options,
+        primary_muscle_options=primary_muscle_options,
+        level_options=level_options
+    )
 
 @app.route("/workouts/history")
 def workout_history_page():
@@ -172,38 +193,66 @@ def workout_history_page():
 # load data safely
 def load_preset_workouts():
     try:
-        with open(PRESET_FILE, "r") as file:
+        with open(PRESET_FILE, "r", encoding="utf-8") as file:
             return json.load(file)
     except (json.JSONDecodeError, FileNotFoundError):
-        with open(PRESET_FILE, "w") as file:
+        with open(PRESET_FILE, "w", encoding="utf-8") as file:
             json.dump([], file)
         return []
 
 def load_workout_sections():
     try:
-        with open(WORKOUT_SECTION_FILE, "r") as file:
+        with open(WORKOUT_SECTION_FILE, "r", encoding="utf-8") as file:
             return json.load(file)
     except (json.JSONDecodeError, FileNotFoundError):
-        with open(WORKOUT_SECTION_FILE, "w") as file:
+        with open(WORKOUT_SECTION_FILE, "w", encoding="utf-8") as file:
             json.dump([], file)
         return []
 
 def save_workout_sections(workouts):
-    with open(WORKOUT_SECTION_FILE, "w") as file:
+    with open(WORKOUT_SECTION_FILE, "w", encoding="utf-8") as file:
         json.dump(workouts, file, indent=4)
 
 def load_workout_history():
     try:
-        with open(WORKOUT_HISTORY_FILE, "r") as file:
+        with open(WORKOUT_HISTORY_FILE, "r", encoding="utf-8") as file:
             return json.load(file)
     except (json.JSONDecodeError, FileNotFoundError):
-        with open(WORKOUT_HISTORY_FILE, "w") as file:
+        with open(WORKOUT_HISTORY_FILE, "w", encoding="utf-8") as file:
             json.dump([], file)
         return []
 
 def save_workout_history(history):
-    with open(WORKOUT_HISTORY_FILE, "w") as file:
+    with open(WORKOUT_HISTORY_FILE, "w", encoding="utf-8") as file:
         json.dump(history, file, indent=4)
+
+
+def normalize_text(value):
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        return ""
+    return value.strip()
+
+
+def normalize_string_list(value):
+    if value is None:
+        return []
+
+    if isinstance(value, str):
+        parts = [item.strip() for item in value.split(",")]
+        return [item for item in parts if item]
+
+    if isinstance(value, list):
+        cleaned_items = []
+        for item in value:
+            if isinstance(item, str):
+                stripped = item.strip()
+                if stripped:
+                    cleaned_items.append(stripped)
+        return cleaned_items
+
+    return []
 
 
 @app.route("/")
@@ -235,16 +284,15 @@ def get_data():
 
     user_workouts = [w for w in workouts if w.get("owner") == current_user]
 
-    category = (request.args.get("category") or "").strip()
     keyword = (request.args.get("q") or "").strip().lower()
-
-    if category:
-        user_workouts = [w for w in user_workouts if w.get("category") == category]
 
     if keyword:
         user_workouts = [
             w for w in user_workouts
             if keyword in (w.get("workout") or "").lower()
+            or keyword in (w.get("equipment") or "").lower()
+            or any(keyword in muscle.lower() for muscle in w.get("primaryMuscles", []))
+            or any(keyword in muscle.lower() for muscle in w.get("secondaryMuscles", []))
         ]
 
     return jsonify({
@@ -263,23 +311,18 @@ def handle_post():
 
     if not data:
         return jsonify({"status": "error", "message": "No data provided"}), 400
-    if "workout" not in data or "category" not in data:
-        return jsonify({"status": "error", "message": "Missing fields"}), 400
+    if "workout" not in data:
+        return jsonify({"status": "error", "message": "Missing workout name"}), 400
     if not isinstance(data["workout"], str) or not data["workout"].strip():
         return jsonify({"status": "error", "message": "Workout must be non-empty string"}), 400
-    if not isinstance(data["category"], str):
-        return jsonify({"status": "error", "message": "Category must be string"}), 400
 
     preset_id = data.get("preset_id")
-    if preset_id is not None and not isinstance(preset_id, int):
-        return jsonify({"status": "error", "message": "preset_id must be integer"}), 400
+    if preset_id is not None and not isinstance(preset_id, str):
+        return jsonify({"status": "error", "message": "preset_id must be string"}), 400
 
-    category = data["category"].strip().title()
-    if category not in ALLOWED_CATEGORIES:
-        return jsonify({
-            "status": "error",
-            "message": f"Invalid category. Allowed: {', '.join(sorted(ALLOWED_CATEGORIES))}"
-        }), 400
+    equipment = normalize_text(data.get("equipment"))
+    primary_muscles = normalize_string_list(data.get("primary_muscles"))
+    secondary_muscles = normalize_string_list(data.get("secondary_muscles"))
 
     current_user = get_jwt_identity()
     workouts = load_workout_sections()
@@ -296,7 +339,9 @@ def handle_post():
         "id": next_id,
         "preset_id": preset_id,
         "workout": data["workout"].strip(),
-        "category": category,
+        "equipment": equipment,
+        "primaryMuscles": primary_muscles,
+        "secondaryMuscles": secondary_muscles,
         "owner": current_user,
         "is_preset": False
     }
@@ -348,7 +393,15 @@ def update_workout(workout_id):
 
     if not data:
         return jsonify({"status": "error", "message": "No data provided"}), 400
-    if "workout" not in data and "category" not in data and "sets" not in data and "reps" not in data:
+    if (
+        "workout" not in data
+        and "equipment" not in data
+        and "primary_muscles" not in data
+        and "secondary_muscles" not in data
+        and "sets" not in data
+        and "reps" not in data
+        and "set_details" not in data
+    ):
         return jsonify({"status": "error", "message": "Nothing to update"}), 400
 
 
@@ -369,16 +422,16 @@ def update_workout(workout_id):
                     return jsonify({"status": "error", "message": "Workout must be non-empty string"}), 400
                 w["workout"] = data["workout"].strip()
 
-            if "category" in data:
-                if not isinstance(data["category"], str):
-                    return jsonify({"status": "error", "message": "Category must be string"}), 400
-                category = data["category"].strip().title()
-                if category not in ALLOWED_CATEGORIES:
-                    return jsonify({
-                        "status": "error",
-                        "message": f"Invalid category. Allowed: {', '.join(sorted(ALLOWED_CATEGORIES))}"
-                    }), 400
-                w["category"] = category
+            if "equipment" in data:
+                if data["equipment"] is not None and not isinstance(data["equipment"], str):
+                    return jsonify({"status": "error", "message": "Equipment must be string"}), 400
+                w["equipment"] = normalize_text(data.get("equipment"))
+
+            if "primary_muscles" in data:
+                w["primaryMuscles"] = normalize_string_list(data.get("primary_muscles"))
+
+            if "secondary_muscles" in data:
+                w["secondaryMuscles"] = normalize_string_list(data.get("secondary_muscles"))
 
             if "sets" in data:
                 if not isinstance(data["sets"], int) or data["sets"] <= 0:

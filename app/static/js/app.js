@@ -10,15 +10,20 @@ const historyList = document.querySelector('#history-list');
 const openPresetModalButton = document.querySelector('#open-preset-modal-btn');
 const closePresetModalButton = document.querySelector('#close-preset-modal-btn');
 const presetModalOverlay = document.querySelector('#preset-modal-overlay');
-const presetCategorySelect = document.querySelector('#preset-category-select');
+const presetEquipmentSelect = document.querySelector('#preset-equipment-select');
+const presetPrimaryMuscleSelect = document.querySelector('#preset-primary-muscle-select');
+const presetLevelSelect = document.querySelector('#preset-level-select');
 const presetWorkoutList = document.querySelector('#preset-workout-list');
-const selectedPresetDisplay = document.querySelector('#selected-preset-display');
 const presetWorkoutIdInput = document.querySelector('#preset-workout-id');
 const presetWorkoutNameInput = document.querySelector('#preset-workout-name');
-const presetWorkoutCategoryInput = document.querySelector('#preset-workout-category');
+const presetWorkoutEquipmentInput = document.querySelector('#preset-workout-equipment');
+const presetWorkoutPrimaryInput = document.querySelector('#preset-workout-primary-muscles');
+const presetWorkoutSecondaryInput = document.querySelector('#preset-workout-secondary-muscles');
 
 const customWorkoutInput = document.querySelector('#custom-workout-input');
-const customCategorySelect = document.querySelector('#custom-category-select');
+const customEquipmentInput = document.querySelector('#custom-equipment-input');
+const customPrimaryMusclesInput = document.querySelector('#custom-primary-muscles-input');
+const customSecondaryMusclesInput = document.querySelector('#custom-secondary-muscles-input');
 const addPresetButton = document.querySelector('#add-preset-btn');
 const addCustomButton = document.querySelector('#add-custom-btn');
 const finishWorkoutButton = document.querySelector('#finish-workout-btn');
@@ -41,13 +46,28 @@ function showMessage(message, type) {
     }
 }
 
+function parseMuscleInput(value) {
+    return value
+        .split(',')
+        .map(item => item.trim())
+        .filter(Boolean);
+}
+
+function formatMuscleList(muscles) {
+    if (!Array.isArray(muscles) || muscles.length === 0) {
+        return 'None listed';
+    }
+
+    return muscles.join(', ');
+}
+
 function updateWorkoutButtons() {
     if (addPresetButton) {
         addPresetButton.disabled = !presetWorkoutIdInput || !presetWorkoutIdInput.value;
     }
 
-    if (addCustomButton && customWorkoutInput && customCategorySelect) {
-        addCustomButton.disabled = !customWorkoutInput.value.trim() || !customCategorySelect.value;
+    if (addCustomButton && customWorkoutInput) {
+        addCustomButton.disabled = !customWorkoutInput.value.trim();
     }
 }
 
@@ -56,11 +76,18 @@ function filterPresetWorkouts() {
         return;
     }
 
-    const selectedCategory = presetCategorySelect ? presetCategorySelect.value : '';
+    const selectedEquipment = presetEquipmentSelect ? presetEquipmentSelect.value : '';
+    const selectedPrimaryMuscle = presetPrimaryMuscleSelect ? presetPrimaryMuscleSelect.value : '';
+    const selectedLevel = presetLevelSelect ? presetLevelSelect.value : '';
     const presetOptions = presetWorkoutList.querySelectorAll('.preset-workout-option');
 
     presetOptions.forEach(option => {
-        if (!selectedCategory || option.dataset.category === selectedCategory) {
+        const primaryMuscles = JSON.parse(option.dataset.primaryMuscles || '[]');
+        const matchesEquipment = !selectedEquipment || option.dataset.equipment === selectedEquipment;
+        const matchesPrimaryMuscle = !selectedPrimaryMuscle || primaryMuscles.includes(selectedPrimaryMuscle);
+        const matchesLevel = !selectedLevel || option.dataset.level === selectedLevel;
+
+        if (matchesEquipment && matchesPrimaryMuscle && matchesLevel) {
             option.style.display = 'flex';
         } else {
             option.style.display = 'none';
@@ -68,7 +95,7 @@ function filterPresetWorkouts() {
     });
 }
 
-function createWorkout(workout, category, presetId = null) {
+function createWorkout(workout, equipment, primaryMuscles, secondaryMuscles, presetId = null) {
     const token = localStorage.getItem('access_token');
 
     if (!token) {
@@ -82,7 +109,13 @@ function createWorkout(workout, category, presetId = null) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ workout, category, preset_id: presetId })
+        body: JSON.stringify({
+            workout,
+            equipment,
+            primary_muscles: primaryMuscles,
+            secondary_muscles: secondaryMuscles,
+            preset_id: presetId
+        })
     })
     .then(response => response.json())
     .then(data => {
@@ -93,17 +126,20 @@ function createWorkout(workout, category, presetId = null) {
                 addWorkoutForm.reset();
             }
 
-            if (selectedPresetDisplay) {
-                selectedPresetDisplay.textContent = 'No preset selected';
-            }
             if (presetWorkoutIdInput) {
                 presetWorkoutIdInput.value = '';
             }
             if (presetWorkoutNameInput) {
                 presetWorkoutNameInput.value = '';
             }
-            if (presetWorkoutCategoryInput) {
-                presetWorkoutCategoryInput.value = '';
+            if (presetWorkoutEquipmentInput) {
+                presetWorkoutEquipmentInput.value = '';
+            }
+            if (presetWorkoutPrimaryInput) {
+                presetWorkoutPrimaryInput.value = '';
+            }
+            if (presetWorkoutSecondaryInput) {
+                presetWorkoutSecondaryInput.value = '';
             }
             if (presetModalOverlay) {
                 presetModalOverlay.style.display = 'none';
@@ -119,6 +155,20 @@ function createWorkout(workout, category, presetId = null) {
         console.error('Add workout error:', error);
         showMessage('Failed to add workout.', 'error');
     });
+}
+
+function renderWorkoutDetails(workout) {
+    const equipment = workout.equipment || 'No equipment listed';
+    const primary = formatMuscleList(workout.primaryMuscles);
+    const secondary = formatMuscleList(workout.secondaryMuscles);
+
+    return `
+        <div class="workout-meta">
+            <p><strong>Equipment:</strong> ${equipment}</p>
+            <p><strong>Primary:</strong> ${primary}</p>
+            <p><strong>Secondary:</strong> ${secondary}</p>
+        </div>
+    `;
 }
 
 function renderWorkouts(workouts) {
@@ -161,20 +211,20 @@ function renderWorkouts(workouts) {
             <article class="workout-card">
                 <div class="workout-card-header">
                     <h3 class="workout-title">${workout.workout}</h3>
-                    <span class="category-tag">${workout.category}</span>
+                    <span class="category-tag">${workout.equipment || 'Custom'}</span>
                 </div>
 
-                ${workout.category === 'Strength' ? `
-                    <div class="strength-editor" data-id="${workout.id}">
-                        <div class="set-list" data-id="${workout.id}">
-                            ${setRows}
-                        </div>
-                        <div class="strength-actions">
-                            <button type="button" class="add-set-btn" data-id="${workout.id}">Add Set</button>
-                            <button type="button" class="save-strength-btn" data-id="${workout.id}">Save</button>
-                        </div>
+                ${renderWorkoutDetails(workout)}
+
+                <div class="strength-editor" data-id="${workout.id}">
+                    <div class="set-list" data-id="${workout.id}">
+                        ${setRows}
                     </div>
-                ` : ''}
+                    <div class="strength-actions">
+                        <button type="button" class="add-set-btn" data-id="${workout.id}">Add Set</button>
+                        <button type="button" class="save-strength-btn" data-id="${workout.id}">Save</button>
+                    </div>
+                </div>
 
                 <button type="button" class="delete-workout-btn" data-id="${workout.id}">Delete</button>
             </article>
@@ -339,14 +389,14 @@ function saveStrengthWorkout(workoutId, setDetails) {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            showMessage('Strength workout updated successfully!', 'success');
+            showMessage('Workout updated successfully!', 'success');
             loadWorkouts();
         } else {
             showMessage(data.message || 'Failed to update workout.', 'error');
         }
     })
     .catch(error => {
-        console.error('Save strength workout error:', error);
+        console.error('Save workout error:', error);
         showMessage('Failed to update workout.', 'error');
     });
 }
@@ -430,22 +480,23 @@ function renderWorkoutHistory(historyItems) {
             <div class="history-session-list">
                 ${session.completed_workout.map(workout => `
                     <div class="history-workout-item">
-                        <p><strong>${workout.workout}</strong> - ${workout.category}</p>
+                        <p><strong>${workout.workout}</strong></p>
+                        <p><strong>Equipment:</strong> ${workout.equipment || 'No equipment listed'}</p>
+                        <p><strong>Primary:</strong> ${formatMuscleList(workout.primaryMuscles)}</p>
+                        <p><strong>Secondary:</strong> ${formatMuscleList(workout.secondaryMuscles)}</p>
 
-                        ${workout.category === 'Strength' ? `
-                            ${Array.isArray(workout.set_details) && workout.set_details.length > 0 ? `
-                                <div class="history-set-list">
-                                    ${workout.set_details.map((setItem, setIndex) => `
-                                        <p>Set ${setIndex + 1}: ${setItem.reps} reps${setItem.kg !== undefined ? `, ${setItem.kg} kg` : ''}</p>
-                                    `).join('')}
-                                </div>
-                            ` : Array.isArray(workout.reps) && workout.reps.length > 0 ? `
-                                <div class="history-set-list">
-                                    ${workout.reps.map((rep, setIndex) => `
-                                        <p>Set ${setIndex + 1}: ${rep} reps</p>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
+                        ${Array.isArray(workout.set_details) && workout.set_details.length > 0 ? `
+                            <div class="history-set-list">
+                                ${workout.set_details.map((setItem, setIndex) => `
+                                    <p>Set ${setIndex + 1}: ${setItem.reps} reps${setItem.kg !== undefined ? `, ${setItem.kg} kg` : ''}</p>
+                                `).join('')}
+                            </div>
+                        ` : Array.isArray(workout.reps) && workout.reps.length > 0 ? `
+                            <div class="history-set-list">
+                                ${workout.reps.map((rep, setIndex) => `
+                                    <p>Set ${setIndex + 1}: ${rep} reps</p>
+                                `).join('')}
+                            </div>
                         ` : ''}
                     </div>
                 `).join('')}
@@ -481,23 +532,6 @@ function loadWorkoutHistory() {
     .catch(error => {
         console.error('Load history error:', error);
         showMessage('Failed to load workout history.', 'error');
-    });
-}
-
-function filterPresetWorkouts() {
-    if (!presetWorkoutList) {
-        return;
-    }
-
-    const selectedCategory = presetCategorySelect ? presetCategorySelect.value : '';
-    const presetOptions = presetWorkoutList.querySelectorAll('.preset-workout-option');
-
-    presetOptions.forEach(option => {
-        if (!selectedCategory || option.dataset.category === selectedCategory) {
-            option.style.display = 'flex';
-        } else {
-            option.style.display = 'none';
-        }
     });
 }
 
@@ -572,8 +606,16 @@ if (finishWorkoutButton) {
     });
 }
 
-if (presetCategorySelect) {
-    presetCategorySelect.addEventListener('change', filterPresetWorkouts);
+if (presetEquipmentSelect) {
+    presetEquipmentSelect.addEventListener('change', filterPresetWorkouts);
+}
+
+if (presetPrimaryMuscleSelect) {
+    presetPrimaryMuscleSelect.addEventListener('change', filterPresetWorkouts);
+}
+
+if (presetLevelSelect) {
+    presetLevelSelect.addEventListener('change', filterPresetWorkouts);
 }
 
 if (openPresetModalButton) {
@@ -606,15 +648,19 @@ if (presetWorkoutList) {
 
     presetOptions.forEach(option => {
         option.addEventListener('click', function () {
+            const primaryMuscles = JSON.parse(option.dataset.primaryMuscles || '[]');
+            const secondaryMuscles = JSON.parse(option.dataset.secondaryMuscles || '[]');
+
+            presetOptions.forEach(item => {
+                item.classList.remove('is-selected');
+            });
+            option.classList.add('is-selected');
+
             presetWorkoutIdInput.value = option.dataset.id;
             presetWorkoutNameInput.value = option.dataset.name;
-            presetWorkoutCategoryInput.value = option.dataset.category;
-            selectedPresetDisplay.textContent = `${option.dataset.name} - ${option.dataset.category}`;
-
-            if (presetModalOverlay) {
-                presetModalOverlay.style.display = 'none';
-            }
-
+            presetWorkoutEquipmentInput.value = option.dataset.equipment || '';
+            presetWorkoutPrimaryInput.value = JSON.stringify(primaryMuscles);
+            presetWorkoutSecondaryInput.value = JSON.stringify(secondaryMuscles);
             updateWorkoutButtons();
         });
     });
@@ -624,36 +670,36 @@ if (customWorkoutInput) {
     customWorkoutInput.addEventListener('input', updateWorkoutButtons);
 }
 
-if (customCategorySelect) {
-    customCategorySelect.addEventListener('change', updateWorkoutButtons);
-}
-
 if (addPresetButton) {
     addPresetButton.addEventListener('click', function () {
         const workout = presetWorkoutNameInput.value;
-        const category = presetWorkoutCategoryInput.value;
-        const presetId = Number(presetWorkoutIdInput.value);
+        const equipment = presetWorkoutEquipmentInput.value;
+        const primaryMuscles = JSON.parse(presetWorkoutPrimaryInput.value || '[]');
+        const secondaryMuscles = JSON.parse(presetWorkoutSecondaryInput.value || '[]');
+        const presetId = presetWorkoutIdInput.value;
 
-        if (!workout || !category || !presetId) {
+        if (!workout || !presetId) {
             showMessage('Please choose a preset workout.', 'error');
             return;
         }
 
-        createWorkout(workout, category, presetId);
+        createWorkout(workout, equipment, primaryMuscles, secondaryMuscles, presetId);
     });
 }
 
 if (addCustomButton) {
     addCustomButton.addEventListener('click', function () {
         const workout = customWorkoutInput.value.trim();
-        const category = customCategorySelect.value;
+        const equipment = customEquipmentInput ? customEquipmentInput.value.trim() : '';
+        const primaryMuscles = customPrimaryMusclesInput ? parseMuscleInput(customPrimaryMusclesInput.value) : [];
+        const secondaryMuscles = customSecondaryMusclesInput ? parseMuscleInput(customSecondaryMusclesInput.value) : [];
 
-        if (!workout || !category) {
-            showMessage('Please complete the custom workout section.', 'error');
+        if (!workout) {
+            showMessage('Please enter a custom workout name.', 'error');
             return;
         }
 
-        createWorkout(workout, category, null);
+        createWorkout(workout, equipment, primaryMuscles, secondaryMuscles, null);
     });
 }
 
