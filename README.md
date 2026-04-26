@@ -1,47 +1,63 @@
 # GymTrance
 
-GymTrance is a simple gym tracking web application that allows users to log workouts, track progress, and securely manage their own fitness data.
+GymTrance is a gym tracking web application that lets users log workouts, track progress, and manage their own fitness data.
 
-##  Project Purpose
+## Project Purpose
 
-This project is built to support my learning and development in **cybersecurity and software engineering**.  
-It focuses not only on functionality, but also on applying basic security principles in a real application.
+This project supports my learning in **cybersecurity** and **software engineering**.
+It focuses on building useful features while also applying basic security practices in a real app.
 
-##  Features (Version 1)
+## Features
 
 - User sign up and login system
-- Add workout records
-- View workout history
-- Edit and delete personal workouts
+- Current workout dashboard
+- Workout history page
+- Add and delete personal workouts
+- Preset exercise browser with filters
+- Set, rep, and kg tracking
 
-##  Cybersecurity Focus
+## Cybersecurity Focus
 
-This project is designed with security in mind, including:
+This project includes security-related ideas such as:
 
-- User authentication (login system)
-- Secure storage of user data
-- Access control (users can only access their own data)
-- Input validation to prevent malicious input
+- User authentication
+- Password hashing
+- Access control so users can only access their own data
+- Input validation for safer requests
 
-##  Tech Stack
+## Tech Stack
 
-(To be decided)
+- Flask
+- JavaScript
+- HTML / CSS
+- SQLite
 
-##  Project Status
+## Exercise Data Credit
 
-Currently in early development (Day 1 – Planning & Setup)
+This project uses preset exercise data based on the free exercise database by Yuhonas.
 
-##  Future Improvements
+- Repository: [free-exercise-db](https://github.com/yuhonas/free-exercise-db)
+- Author: [Yuhonas](https://github.com/yuhonas)
 
-- Password hashing and encryption
+## Project Status
+
+Currently in active development.
+
+## Future Improvements
+
 - Better UI/UX design
-- Advanced security features
-- Deployment to cloud (AWS / similar)
+- More workout analytics
+- Stronger security improvements
+- Deployment to the cloud
 
-## Branch
+## Branches
 
-Created new branches, before was using main to branches all the changes, now uses **code** and **document**
+This project uses:
 
-##  Author
+- `main`
+- `code`
+- `document`
 
-GitHub: https://github.com/elysium71
+## Author
+
+GitHub: [elysium71](https://github.com/elysium71)
