@@ -161,6 +161,19 @@
             </div>
         </div>
 
+        <div id="workout-detail-modal-overlay" class="preset-modal-overlay" style="display: none;">
+            <div class="preset-modal workout-detail-modal">
+                <div class="preset-modal-header">
+                    <div>
+                        <p class="section-label">Exercise Detail</p>
+                        <h3 id="workout-detail-title">Workout Detail</h3>
+                    </div>
+                    <button type="button" id="close-workout-detail-btn" class="ghost-btn modal-close-btn">Close</button>
+                </div>
+                <div id="workout-detail-body" class="workout-detail-modal-body"></div>
+            </div>
+        </div>
+
         <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     </body>
 </html>

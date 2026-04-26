@@ -6,6 +6,10 @@ const addWorkoutForm = document.querySelector('#add-workout-form');
 const messageBox = document.querySelector('#message-box');
 const workoutList = document.querySelector('#workout-list');
 const historyList = document.querySelector('#history-list');
+const workoutDetailModalOverlay = document.querySelector('#workout-detail-modal-overlay');
+const workoutDetailTitle = document.querySelector('#workout-detail-title');
+const workoutDetailBody = document.querySelector('#workout-detail-body');
+const closeWorkoutDetailButton = document.querySelector('#close-workout-detail-btn');
 
 const openPresetModalButton = document.querySelector('#open-preset-modal-btn');
 const closePresetModalButton = document.querySelector('#close-preset-modal-btn');
@@ -61,6 +65,15 @@ function formatMuscleList(muscles) {
     }
 
     return muscles.join(', ');
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
 }
 
 function updateWorkoutButtons() {
@@ -183,12 +196,67 @@ function renderWorkoutDetails(workout) {
     `;
 }
 
+function renderWorkoutExpandedDetails(workout) {
+    const hasGif = Boolean(workout.gifUrl);
+    const instructions = Array.isArray(workout.instructions) ? workout.instructions : [];
+    const hasInstructions = instructions.length > 0;
+
+    if (!hasGif && !hasInstructions) {
+        return '';
+    }
+
+    const instructionItems = hasInstructions
+        ? instructions.map(step => `<li>${escapeHtml(step)}</li>`).join('')
+        : '<li>No instructions available.</li>';
+
+    return `
+        <div class="workout-detail-panel">
+            ${hasGif ? `
+                <div class="workout-detail-media">
+                    <img
+                        src="${escapeHtml(workout.gifUrl)}"
+                        alt="${escapeHtml(workout.workout)} demonstration"
+                        class="workout-detail-gif"
+                        loading="lazy">
+                </div>
+            ` : ''}
+            <div class="workout-detail-copy">
+                <p class="workout-detail-label">Instructions</p>
+                <ol class="workout-detail-steps">
+                    ${instructionItems}
+                </ol>
+            </div>
+        </div>
+    `;
+}
+
+function openWorkoutDetailModal(workout) {
+    if (!workoutDetailModalOverlay || !workoutDetailBody || !workoutDetailTitle) {
+        return;
+    }
+
+    workoutDetailTitle.textContent = workout.workout || 'Workout Detail';
+    workoutDetailBody.innerHTML = renderWorkoutExpandedDetails(workout);
+    workoutDetailModalOverlay.style.display = 'flex';
+}
+
+function closeWorkoutDetailModal() {
+    if (!workoutDetailModalOverlay || !workoutDetailBody || !workoutDetailTitle) {
+        return;
+    }
+
+    workoutDetailModalOverlay.style.display = 'none';
+    workoutDetailTitle.textContent = 'Workout Detail';
+    workoutDetailBody.innerHTML = '';
+}
+
 function renderWorkouts(workouts) {
     if (!workoutList) {
         return;
     }
 
     if (!workouts || workouts.length === 0) {
+        closeWorkoutDetailModal();
         workoutList.innerHTML = '<p class="empty-state">No workouts found. Add your first one and start building your streak.</p>';
         return;
     }
@@ -227,6 +295,15 @@ function renderWorkouts(workouts) {
                 </div>
 
                 ${renderWorkoutDetails(workout)}
+
+                ${(workout.gifUrl || (Array.isArray(workout.instructions) && workout.instructions.length > 0)) ? `
+                    <button
+                        type="button"
+                        class="toggle-detail-btn"
+                        data-id="${workout.id}">
+                        Show Details
+                    </button>
+                ` : ''}
 
                 <div class="strength-editor" data-id="${workout.id}">
                     <div class="set-list" data-id="${workout.id}">
@@ -279,6 +356,16 @@ function renderWorkouts(workouts) {
             }).filter(setItem => setItem.reps > 0);
 
             saveStrengthWorkout(workoutId, setDetails);
+        });
+    });
+
+    document.querySelectorAll('.toggle-detail-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            const selectedWorkout = workouts.find(item => String(item.id) === button.dataset.id);
+            if (!selectedWorkout) {
+                return;
+            }
+            openWorkoutDetailModal(selectedWorkout);
         });
     });
 }
@@ -681,6 +768,20 @@ if (presetWorkoutList) {
             }
             updateWorkoutButtons();
         });
+    });
+}
+
+if (closeWorkoutDetailButton) {
+    closeWorkoutDetailButton.addEventListener('click', function () {
+        closeWorkoutDetailModal();
+    });
+}
+
+if (workoutDetailModalOverlay) {
+    workoutDetailModalOverlay.addEventListener('click', function (event) {
+        if (event.target === workoutDetailModalOverlay) {
+            closeWorkoutDetailModal();
+        }
     });
 }
 

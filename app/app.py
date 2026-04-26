@@ -277,6 +277,33 @@ def find_preset_workout(exercise_id):
     return None
 
 
+def enrich_workout_record(workout):
+    if not isinstance(workout, dict):
+        return workout
+
+    preset_id = workout.get("preset_id") or workout.get("exerciseId")
+    if not preset_id:
+        return workout
+
+    preset_workout = find_preset_workout(str(preset_id))
+    if not preset_workout:
+        return workout
+
+    enriched_workout = dict(workout)
+    exercise_id = preset_workout.get("exerciseId")
+    gif_path = GIF_DIR / f"{exercise_id}.gif" if exercise_id else None
+
+    enriched_workout["exerciseId"] = exercise_id
+    enriched_workout["instructions"] = preset_workout.get("instructions", [])
+    enriched_workout["gifUrl"] = (
+        f"/exercise-gif/{exercise_id}"
+        if gif_path and gif_path.exists()
+        else None
+    )
+
+    return enriched_workout
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -312,6 +339,14 @@ def exercise_thumbnail(exercise_id):
     return send_file(thumbnail_path, mimetype="image/png")
 
 
+@app.route("/exercise-gif/<exercise_id>")
+def exercise_gif(exercise_id):
+    gif_path = GIF_DIR / f"{exercise_id}.gif"
+    if gif_path.exists():
+        return send_file(gif_path, mimetype="image/gif")
+    return ("", 404)
+
+
 @app.route("/history-data", methods=["GET"])
 @jwt_required()
 def get_history_data():
@@ -335,6 +370,7 @@ def get_data():
     workouts = load_workout_sections()
 
     user_workouts = [w for w in workouts if w.get("owner") == current_user]
+    user_workouts = [enrich_workout_record(workout) for workout in user_workouts]
 
     keyword = (request.args.get("q") or "").strip().lower()
 
