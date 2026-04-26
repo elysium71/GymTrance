@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 # Implement User Authentication
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 import json
@@ -7,6 +7,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3 #SQL database for user authentication
 import re #for password validation
 from datetime import timedelta 
+from io import BytesIO
+from urllib.request import urlopen
+from PIL import Image
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -18,6 +21,9 @@ DATA_DIR.mkdir(exist_ok=True)
 PRESET_FILE = DATA_DIR / "workouts.json"
 WORKOUT_SECTION_FILE = DATA_DIR / "workoutsection.json"
 WORKOUT_HISTORY_FILE = DATA_DIR / "workouthistory.json"
+THUMBNAIL_DIR = DATA_DIR / "thumbnails"
+
+THUMBNAIL_DIR.mkdir(exist_ok=True)
 
 if not PRESET_FILE.exists():
     with open(PRESET_FILE, "w", encoding="utf-8") as f:
@@ -161,27 +167,22 @@ def workouts_home():
 def current_workout_page():
     preset_workouts = load_preset_workouts()
     equipment_options = sorted({
-        workout.get("equipment").strip()
+        equipment
         for workout in preset_workouts
-        if isinstance(workout.get("equipment"), str) and workout.get("equipment").strip()
+        for equipment in workout.get("equipments", [])
+        if isinstance(equipment, str) and equipment.strip()
     })
-    primary_muscle_options = sorted({
-        muscle.strip()
+    body_part_options = sorted({
+        body_part.strip()
         for workout in preset_workouts
-        for muscle in workout.get("primaryMuscles", [])
-        if isinstance(muscle, str) and muscle.strip()
-    })
-    level_options = sorted({
-        workout.get("level").strip()
-        for workout in preset_workouts
-        if isinstance(workout.get("level"), str) and workout.get("level").strip()
+        for body_part in workout.get("bodyParts", [])
+        if isinstance(body_part, str) and body_part.strip()
     })
     return render_template(
         "workouts_current.html",
         preset_workouts=preset_workouts,
         equipment_options=equipment_options,
-        primary_muscle_options=primary_muscle_options,
-        level_options=level_options
+        body_part_options=body_part_options
     )
 
 @app.route("/workouts/history")
@@ -255,9 +256,39 @@ def normalize_string_list(value):
     return []
 
 
+def find_preset_workout(exercise_id):
+    preset_workouts = load_preset_workouts()
+    for workout in preset_workouts:
+        if workout.get("exerciseId") == exercise_id:
+            return workout
+    return None
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/exercise-thumbnail/<exercise_id>")
+def exercise_thumbnail(exercise_id):
+    thumbnail_path = THUMBNAIL_DIR / f"{exercise_id}.png"
+
+    if thumbnail_path.exists():
+        return send_file(thumbnail_path, mimetype="image/png")
+
+    workout = find_preset_workout(exercise_id)
+    if not workout or not workout.get("gifUrl"):
+        return ("", 404)
+
+    with urlopen(workout["gifUrl"]) as response:
+        gif_bytes = response.read()
+
+    with Image.open(BytesIO(gif_bytes)) as gif_image:
+        gif_image.seek(0)
+        still_image = gif_image.convert("RGBA")
+        still_image.save(thumbnail_path, format="PNG")
+
+    return send_file(thumbnail_path, mimetype="image/png")
 
 
 @app.route("/history-data", methods=["GET"])
@@ -321,6 +352,7 @@ def handle_post():
         return jsonify({"status": "error", "message": "preset_id must be string"}), 400
 
     equipment = normalize_text(data.get("equipment"))
+    body_parts = normalize_string_list(data.get("body_parts"))
     primary_muscles = normalize_string_list(data.get("primary_muscles"))
     secondary_muscles = normalize_string_list(data.get("secondary_muscles"))
 
@@ -340,6 +372,7 @@ def handle_post():
         "preset_id": preset_id,
         "workout": data["workout"].strip(),
         "equipment": equipment,
+        "bodyParts": body_parts,
         "primaryMuscles": primary_muscles,
         "secondaryMuscles": secondary_muscles,
         "owner": current_user,
@@ -396,6 +429,7 @@ def update_workout(workout_id):
     if (
         "workout" not in data
         and "equipment" not in data
+        and "body_parts" not in data
         and "primary_muscles" not in data
         and "secondary_muscles" not in data
         and "sets" not in data
@@ -426,6 +460,9 @@ def update_workout(workout_id):
                 if data["equipment"] is not None and not isinstance(data["equipment"], str):
                     return jsonify({"status": "error", "message": "Equipment must be string"}), 400
                 w["equipment"] = normalize_text(data.get("equipment"))
+
+            if "body_parts" in data:
+                w["bodyParts"] = normalize_string_list(data.get("body_parts"))
 
             if "primary_muscles" in data:
                 w["primaryMuscles"] = normalize_string_list(data.get("primary_muscles"))

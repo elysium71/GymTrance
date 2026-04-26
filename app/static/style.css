@@ -683,6 +683,10 @@ button:disabled:hover {
     margin-bottom: 18px;
 }
 
+.preset-search-filter {
+    grid-column: 1 / -1;
+}
+
 .preset-filter {
     display: grid;
     gap: 8px;
@@ -709,9 +713,9 @@ button:disabled:hover {
 
 .preset-workout-option {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     text-align: left;
     background: rgba(255, 255, 255, 0.05);
     color: var(--text);
@@ -720,13 +724,39 @@ button:disabled:hover {
     border-radius: 16px;
 }
 
+.preset-option-media {
+    flex: 0 0 56px;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.preset-option-thumb {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.preset-option-copy {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    flex: 1;
+}
+
+.preset-option-title {
+    font-weight: 700;
+    line-height: 1.3;
+}
+
 .preset-workout-option small {
     color: var(--muted);
     font-size: 0.82rem;
-}
-
-.preset-workout-option span {
-    font-weight: 700;
+    line-height: 1.4;
 }
 
 .preset-workout-option:hover {

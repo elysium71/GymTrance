@@ -11,17 +11,19 @@ const openPresetModalButton = document.querySelector('#open-preset-modal-btn');
 const closePresetModalButton = document.querySelector('#close-preset-modal-btn');
 const presetModalOverlay = document.querySelector('#preset-modal-overlay');
 const presetEquipmentSelect = document.querySelector('#preset-equipment-select');
-const presetPrimaryMuscleSelect = document.querySelector('#preset-primary-muscle-select');
-const presetLevelSelect = document.querySelector('#preset-level-select');
+const presetBodyPartSelect = document.querySelector('#preset-body-part-select');
+const presetSearchInput = document.querySelector('#preset-search-input');
 const presetWorkoutList = document.querySelector('#preset-workout-list');
 const presetWorkoutIdInput = document.querySelector('#preset-workout-id');
 const presetWorkoutNameInput = document.querySelector('#preset-workout-name');
 const presetWorkoutEquipmentInput = document.querySelector('#preset-workout-equipment');
+const presetWorkoutBodyPartsInput = document.querySelector('#preset-workout-body-parts');
 const presetWorkoutPrimaryInput = document.querySelector('#preset-workout-primary-muscles');
 const presetWorkoutSecondaryInput = document.querySelector('#preset-workout-secondary-muscles');
 
 const customWorkoutInput = document.querySelector('#custom-workout-input');
 const customEquipmentInput = document.querySelector('#custom-equipment-input');
+const customBodyPartsInput = document.querySelector('#custom-body-parts-input');
 const customPrimaryMusclesInput = document.querySelector('#custom-primary-muscles-input');
 const customSecondaryMusclesInput = document.querySelector('#custom-secondary-muscles-input');
 const addPresetButton = document.querySelector('#add-preset-btn');
@@ -63,7 +65,11 @@ function formatMuscleList(muscles) {
 
 function updateWorkoutButtons() {
     if (addPresetButton) {
-        addPresetButton.disabled = !presetWorkoutIdInput || !presetWorkoutIdInput.value;
+        const hasPresetSelection = Boolean(
+            presetWorkoutIdInput &&
+            String(presetWorkoutIdInput.value || '').trim()
+        );
+        addPresetButton.disabled = !hasPresetSelection;
     }
 
     if (addCustomButton && customWorkoutInput) {
@@ -77,17 +83,17 @@ function filterPresetWorkouts() {
     }
 
     const selectedEquipment = presetEquipmentSelect ? presetEquipmentSelect.value : '';
-    const selectedPrimaryMuscle = presetPrimaryMuscleSelect ? presetPrimaryMuscleSelect.value : '';
-    const selectedLevel = presetLevelSelect ? presetLevelSelect.value : '';
+    const selectedBodyPart = presetBodyPartSelect ? presetBodyPartSelect.value : '';
+    const searchTerm = presetSearchInput ? presetSearchInput.value.trim().toLowerCase() : '';
     const presetOptions = presetWorkoutList.querySelectorAll('.preset-workout-option');
 
     presetOptions.forEach(option => {
-        const primaryMuscles = JSON.parse(option.dataset.primaryMuscles || '[]');
+        const bodyParts = JSON.parse(option.dataset.bodyParts || '[]');
         const matchesEquipment = !selectedEquipment || option.dataset.equipment === selectedEquipment;
-        const matchesPrimaryMuscle = !selectedPrimaryMuscle || primaryMuscles.includes(selectedPrimaryMuscle);
-        const matchesLevel = !selectedLevel || option.dataset.level === selectedLevel;
+        const matchesBodyPart = !selectedBodyPart || bodyParts.includes(selectedBodyPart);
+        const matchesSearch = !searchTerm || option.dataset.searchName.includes(searchTerm);
 
-        if (matchesEquipment && matchesPrimaryMuscle && matchesLevel) {
+        if (matchesEquipment && matchesBodyPart && matchesSearch) {
             option.style.display = 'flex';
         } else {
             option.style.display = 'none';
@@ -95,7 +101,7 @@ function filterPresetWorkouts() {
     });
 }
 
-function createWorkout(workout, equipment, primaryMuscles, secondaryMuscles, presetId = null) {
+function createWorkout(workout, equipment, bodyParts, primaryMuscles, secondaryMuscles, presetId = null) {
     const token = localStorage.getItem('access_token');
 
     if (!token) {
@@ -112,6 +118,7 @@ function createWorkout(workout, equipment, primaryMuscles, secondaryMuscles, pre
         body: JSON.stringify({
             workout,
             equipment,
+            body_parts: bodyParts,
             primary_muscles: primaryMuscles,
             secondary_muscles: secondaryMuscles,
             preset_id: presetId
@@ -134,6 +141,9 @@ function createWorkout(workout, equipment, primaryMuscles, secondaryMuscles, pre
             }
             if (presetWorkoutEquipmentInput) {
                 presetWorkoutEquipmentInput.value = '';
+            }
+            if (presetWorkoutBodyPartsInput) {
+                presetWorkoutBodyPartsInput.value = '';
             }
             if (presetWorkoutPrimaryInput) {
                 presetWorkoutPrimaryInput.value = '';
@@ -159,12 +169,14 @@ function createWorkout(workout, equipment, primaryMuscles, secondaryMuscles, pre
 
 function renderWorkoutDetails(workout) {
     const equipment = workout.equipment || 'No equipment listed';
+    const bodyParts = formatMuscleList(workout.bodyParts);
     const primary = formatMuscleList(workout.primaryMuscles);
     const secondary = formatMuscleList(workout.secondaryMuscles);
 
     return `
         <div class="workout-meta">
             <p><strong>Equipment:</strong> ${equipment}</p>
+            <p><strong>Body Parts:</strong> ${bodyParts}</p>
             <p><strong>Primary:</strong> ${primary}</p>
             <p><strong>Secondary:</strong> ${secondary}</p>
         </div>
@@ -482,6 +494,7 @@ function renderWorkoutHistory(historyItems) {
                     <div class="history-workout-item">
                         <p><strong>${workout.workout}</strong></p>
                         <p><strong>Equipment:</strong> ${workout.equipment || 'No equipment listed'}</p>
+                        <p><strong>Body Parts:</strong> ${formatMuscleList(workout.bodyParts)}</p>
                         <p><strong>Primary:</strong> ${formatMuscleList(workout.primaryMuscles)}</p>
                         <p><strong>Secondary:</strong> ${formatMuscleList(workout.secondaryMuscles)}</p>
 
@@ -610,12 +623,12 @@ if (presetEquipmentSelect) {
     presetEquipmentSelect.addEventListener('change', filterPresetWorkouts);
 }
 
-if (presetPrimaryMuscleSelect) {
-    presetPrimaryMuscleSelect.addEventListener('change', filterPresetWorkouts);
+if (presetBodyPartSelect) {
+    presetBodyPartSelect.addEventListener('change', filterPresetWorkouts);
 }
 
-if (presetLevelSelect) {
-    presetLevelSelect.addEventListener('change', filterPresetWorkouts);
+if (presetSearchInput) {
+    presetSearchInput.addEventListener('input', filterPresetWorkouts);
 }
 
 if (openPresetModalButton) {
@@ -648,6 +661,7 @@ if (presetWorkoutList) {
 
     presetOptions.forEach(option => {
         option.addEventListener('click', function () {
+            const bodyParts = JSON.parse(option.dataset.bodyParts || '[]');
             const primaryMuscles = JSON.parse(option.dataset.primaryMuscles || '[]');
             const secondaryMuscles = JSON.parse(option.dataset.secondaryMuscles || '[]');
 
@@ -659,8 +673,12 @@ if (presetWorkoutList) {
             presetWorkoutIdInput.value = option.dataset.id;
             presetWorkoutNameInput.value = option.dataset.name;
             presetWorkoutEquipmentInput.value = option.dataset.equipment || '';
+            presetWorkoutBodyPartsInput.value = JSON.stringify(bodyParts);
             presetWorkoutPrimaryInput.value = JSON.stringify(primaryMuscles);
             presetWorkoutSecondaryInput.value = JSON.stringify(secondaryMuscles);
+            if (addPresetButton) {
+                addPresetButton.disabled = false;
+            }
             updateWorkoutButtons();
         });
     });
@@ -674,6 +692,7 @@ if (addPresetButton) {
     addPresetButton.addEventListener('click', function () {
         const workout = presetWorkoutNameInput.value;
         const equipment = presetWorkoutEquipmentInput.value;
+        const bodyParts = JSON.parse(presetWorkoutBodyPartsInput.value || '[]');
         const primaryMuscles = JSON.parse(presetWorkoutPrimaryInput.value || '[]');
         const secondaryMuscles = JSON.parse(presetWorkoutSecondaryInput.value || '[]');
         const presetId = presetWorkoutIdInput.value;
@@ -683,7 +702,7 @@ if (addPresetButton) {
             return;
         }
 
-        createWorkout(workout, equipment, primaryMuscles, secondaryMuscles, presetId);
+        createWorkout(workout, equipment, bodyParts, primaryMuscles, secondaryMuscles, presetId);
     });
 }
 
@@ -691,6 +710,7 @@ if (addCustomButton) {
     addCustomButton.addEventListener('click', function () {
         const workout = customWorkoutInput.value.trim();
         const equipment = customEquipmentInput ? customEquipmentInput.value.trim() : '';
+        const bodyParts = customBodyPartsInput ? parseMuscleInput(customBodyPartsInput.value) : [];
         const primaryMuscles = customPrimaryMusclesInput ? parseMuscleInput(customPrimaryMusclesInput.value) : [];
         const secondaryMuscles = customSecondaryMusclesInput ? parseMuscleInput(customSecondaryMusclesInput.value) : [];
 
@@ -699,7 +719,7 @@ if (addCustomButton) {
             return;
         }
 
-        createWorkout(workout, equipment, primaryMuscles, secondaryMuscles, null);
+        createWorkout(workout, equipment, bodyParts, primaryMuscles, secondaryMuscles, null);
     });
 }
 
