@@ -5,13 +5,24 @@ const logoutButton = document.querySelector('#logout-btn');
 const addWorkoutForm = document.querySelector('#add-workout-form');
 const messageBox = document.querySelector('#message-box');
 const workoutList = document.querySelector('#workout-list');
-const presetWorkoutSelect = document.querySelector('#preset-workout-select');
+const historyList = document.querySelector('#history-list');
+
+const openPresetModalButton = document.querySelector('#open-preset-modal-btn');
+const closePresetModalButton = document.querySelector('#close-preset-modal-btn');
+const presetModalOverlay = document.querySelector('#preset-modal-overlay');
+const presetCategorySelect = document.querySelector('#preset-category-select');
+const presetWorkoutList = document.querySelector('#preset-workout-list');
+const selectedPresetDisplay = document.querySelector('#selected-preset-display');
+const presetWorkoutIdInput = document.querySelector('#preset-workout-id');
+const presetWorkoutNameInput = document.querySelector('#preset-workout-name');
+const presetWorkoutCategoryInput = document.querySelector('#preset-workout-category');
+
 const customWorkoutInput = document.querySelector('#custom-workout-input');
 const customCategorySelect = document.querySelector('#custom-category-select');
 const addPresetButton = document.querySelector('#add-preset-btn');
 const addCustomButton = document.querySelector('#add-custom-btn');
 const finishWorkoutButton = document.querySelector('#finish-workout-btn');
-const historyList = document.querySelector('#history-list');
+
 const savedToken = localStorage.getItem('access_token');
 
 function showMessage(message, type) {
@@ -29,14 +40,32 @@ function showMessage(message, type) {
         messageBox.style.color = '#f5f7fb';
     }
 }
+
 function updateWorkoutButtons() {
-    if (addPresetButton && presetWorkoutSelect) {
-        addPresetButton.disabled = !presetWorkoutSelect.value;
+    if (addPresetButton) {
+        addPresetButton.disabled = !presetWorkoutIdInput || !presetWorkoutIdInput.value;
     }
 
     if (addCustomButton && customWorkoutInput && customCategorySelect) {
         addCustomButton.disabled = !customWorkoutInput.value.trim() || !customCategorySelect.value;
     }
+}
+
+function filterPresetWorkouts() {
+    if (!presetWorkoutList) {
+        return;
+    }
+
+    const selectedCategory = presetCategorySelect ? presetCategorySelect.value : '';
+    const presetOptions = presetWorkoutList.querySelectorAll('.preset-workout-option');
+
+    presetOptions.forEach(option => {
+        if (!selectedCategory || option.dataset.category === selectedCategory) {
+            option.style.display = 'flex';
+        } else {
+            option.style.display = 'none';
+        }
+    });
 }
 
 function createWorkout(workout, category, presetId = null) {
@@ -59,9 +88,27 @@ function createWorkout(workout, category, presetId = null) {
     .then(data => {
         if (data.status === 'success') {
             showMessage('Workout added successfully!', 'success');
+
             if (addWorkoutForm) {
                 addWorkoutForm.reset();
             }
+
+            if (selectedPresetDisplay) {
+                selectedPresetDisplay.textContent = 'No preset selected';
+            }
+            if (presetWorkoutIdInput) {
+                presetWorkoutIdInput.value = '';
+            }
+            if (presetWorkoutNameInput) {
+                presetWorkoutNameInput.value = '';
+            }
+            if (presetWorkoutCategoryInput) {
+                presetWorkoutCategoryInput.value = '';
+            }
+            if (presetModalOverlay) {
+                presetModalOverlay.style.display = 'none';
+            }
+
             updateWorkoutButtons();
             loadWorkouts();
         } else {
@@ -73,7 +120,6 @@ function createWorkout(workout, category, presetId = null) {
         showMessage('Failed to add workout.', 'error');
     });
 }
-
 
 function renderWorkouts(workouts) {
     if (!workoutList) {
@@ -88,32 +134,28 @@ function renderWorkouts(workouts) {
     const workoutHtml = workouts.map(workout => {
         const setEntries = Array.isArray(workout.set_details) && workout.set_details.length > 0
             ? workout.set_details
-            : Array.isArray(workout.reps) && workout.reps.length > 0
-                ? workout.reps.map(rep => ({ reps: rep, kg: '' }))
-                : [{ reps: '', kg: '' }];
+            : [{ reps: '', kg: '' }];
 
-                const setRows = setEntries.map((setEntry, index) => `
-                    <div class="set-row">
-                        <div class="set-label">Set ${index + 1}</div>
-                        <input
-                            type="number"
-                            class="reps-field"
-                            data-id="${workout.id}"
-                            placeholder="Reps"
-                            min="1"
-                            value="${setEntry.reps || ''}">
-                        <input
-                            type="number"
-                            class="kg-field"
-                            data-id="${workout.id}"
-                            placeholder="KG"
-                            min="0"
-                            value="${setEntry.kg || ''}">
-                        <button type="button" class="remove-set-btn" data-id="${workout.id}">Delete Set</button>
-                    </div>
-                `).join('');
-
-
+        const setRows = setEntries.map((setEntry, index) => `
+            <div class="set-row">
+                <div class="set-label">Set ${index + 1}</div>
+                <input
+                    type="number"
+                    class="reps-field"
+                    data-id="${workout.id}"
+                    placeholder="Reps"
+                    min="1"
+                    value="${setEntry.reps || ''}">
+                <input
+                    type="number"
+                    class="kg-field"
+                    data-id="${workout.id}"
+                    placeholder="KG"
+                    min="0"
+                    value="${setEntry.kg || ''}">
+                <button type="button" class="remove-set-btn" data-id="${workout.id}">Delete Set</button>
+            </div>
+        `).join('');
 
         return `
             <article class="workout-card">
@@ -162,9 +204,9 @@ function renderWorkouts(workouts) {
     document.querySelectorAll('.save-strength-btn').forEach(button => {
         button.addEventListener('click', function () {
             const workoutId = button.dataset.id;
-            const rows = document.querySelectorAll(`.set-row .reps-field[data-id="${workoutId}"]`);
+            const repInputs = document.querySelectorAll(`.reps-field[data-id="${workoutId}"]`);
 
-            const setDetails = Array.from(rows).map(repsInput => {
+            const setDetails = Array.from(repInputs).map(repsInput => {
                 const row = repsInput.closest('.set-row');
                 const kgInput = row.querySelector(`.kg-field[data-id="${workoutId}"]`);
 
@@ -177,21 +219,7 @@ function renderWorkouts(workouts) {
             saveStrengthWorkout(workoutId, setDetails);
         });
     });
-
-
-
-
-    const saveButtons = document.querySelectorAll('.save-strength-btn');
-    saveButtons.forEach(button => {
-        button.addEventListener('click', function () {
-            const workoutId = button.dataset.id;
-            const sets = document.querySelector(`.sets-field[data-id="${workoutId}"]`).value;
-            const reps = document.querySelector(`.reps-field[data-id="${workoutId}"]`).value;
-            saveStrengthWorkout(workoutId, sets, reps);
-        });
-    });
 }
-
 
 function loadWorkouts() {
     const token = localStorage.getItem('access_token');
@@ -283,7 +311,6 @@ function finishWorkout() {
     });
 }
 
-
 function saveStrengthWorkout(workoutId, setDetails) {
     const token = localStorage.getItem('access_token');
 
@@ -324,7 +351,6 @@ function saveStrengthWorkout(workoutId, setDetails) {
     });
 }
 
-
 function addSetRow(workoutId) {
     const setList = document.querySelector(`.set-list[data-id="${workoutId}"]`);
     if (!setList) {
@@ -359,7 +385,6 @@ function addSetRow(workoutId) {
     });
 }
 
-
 function removeSetRow(button) {
     const row = button.closest('.set-row');
     const setList = button.closest('.set-list');
@@ -371,6 +396,7 @@ function removeSetRow(button) {
     const rows = setList.querySelectorAll('.set-row');
     if (rows.length === 1) {
         row.querySelector('.reps-field').value = '';
+        row.querySelector('.kg-field').value = '';
         return;
     }
 
@@ -384,8 +410,96 @@ function removeSetRow(button) {
     });
 }
 
+function renderWorkoutHistory(historyItems) {
+    if (!historyList) {
+        return;
+    }
 
+    if (!historyItems || historyItems.length === 0) {
+        historyList.innerHTML = '<p class="empty-state">No past workouts found yet.</p>';
+        return;
+    }
 
+    const historyHtml = historyItems.map((session, index) => `
+        <article class="workout-card">
+            <div class="workout-card-header">
+                <h3 class="workout-title">Workout Session ${index + 1}</h3>
+                <span class="category-tag">Completed</span>
+            </div>
+
+            <div class="history-session-list">
+                ${session.completed_workout.map(workout => `
+                    <div class="history-workout-item">
+                        <p><strong>${workout.workout}</strong> - ${workout.category}</p>
+
+                        ${workout.category === 'Strength' ? `
+                            ${Array.isArray(workout.set_details) && workout.set_details.length > 0 ? `
+                                <div class="history-set-list">
+                                    ${workout.set_details.map((setItem, setIndex) => `
+                                        <p>Set ${setIndex + 1}: ${setItem.reps} reps${setItem.kg !== undefined ? `, ${setItem.kg} kg` : ''}</p>
+                                    `).join('')}
+                                </div>
+                            ` : Array.isArray(workout.reps) && workout.reps.length > 0 ? `
+                                <div class="history-set-list">
+                                    ${workout.reps.map((rep, setIndex) => `
+                                        <p>Set ${setIndex + 1}: ${rep} reps</p>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        ` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        </article>
+    `).join('');
+
+    historyList.innerHTML = historyHtml;
+}
+
+function loadWorkoutHistory() {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch('http://127.0.0.1:5000/history-data', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            renderWorkoutHistory(data.data);
+        } else {
+            showMessage(data.message || 'Failed to load workout history.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Load history error:', error);
+        showMessage('Failed to load workout history.', 'error');
+    });
+}
+
+function filterPresetWorkouts() {
+    if (!presetWorkoutList) {
+        return;
+    }
+
+    const selectedCategory = presetCategorySelect ? presetCategorySelect.value : '';
+    const presetOptions = presetWorkoutList.querySelectorAll('.preset-workout-option');
+
+    presetOptions.forEach(option => {
+        if (!selectedCategory || option.dataset.category === selectedCategory) {
+            option.style.display = 'flex';
+        } else {
+            option.style.display = 'none';
+        }
+    });
+}
 
 if (registerForm) {
     registerForm.addEventListener('submit', function (event) {
@@ -458,52 +572,89 @@ if (finishWorkoutButton) {
     });
 }
 
-if (addWorkoutForm) {
-    if (presetWorkoutSelect) {
-        presetWorkoutSelect.addEventListener('change', updateWorkoutButtons);
-    }
+if (presetCategorySelect) {
+    presetCategorySelect.addEventListener('change', filterPresetWorkouts);
+}
 
-    if (customWorkoutInput) {
-        customWorkoutInput.addEventListener('input', updateWorkoutButtons);
-    }
+if (openPresetModalButton) {
+    openPresetModalButton.addEventListener('click', function () {
+        if (presetModalOverlay) {
+            presetModalOverlay.style.display = 'flex';
+            filterPresetWorkouts();
+        }
+    });
+}
 
-    if (customCategorySelect) {
-        customCategorySelect.addEventListener('change', updateWorkoutButtons);
-    }
+if (closePresetModalButton) {
+    closePresetModalButton.addEventListener('click', function () {
+        if (presetModalOverlay) {
+            presetModalOverlay.style.display = 'none';
+        }
+    });
+}
 
-    if (addPresetButton) {
-        addPresetButton.addEventListener('click', function () {
-            const selectedOption = presetWorkoutSelect.options[presetWorkoutSelect.selectedIndex];
-            const workout = selectedOption.value;
-            const category = selectedOption.dataset.category || '';
-            const presetId = Number(selectedOption.dataset.presetId);
+if (presetModalOverlay) {
+    presetModalOverlay.addEventListener('click', function (event) {
+        if (event.target === presetModalOverlay) {
+            presetModalOverlay.style.display = 'none';
+        }
+    });
+}
 
-            if (!workout || !category) {
-                showMessage('Please choose a preset workout.', 'error');
-                return;
+if (presetWorkoutList) {
+    const presetOptions = presetWorkoutList.querySelectorAll('.preset-workout-option');
+
+    presetOptions.forEach(option => {
+        option.addEventListener('click', function () {
+            presetWorkoutIdInput.value = option.dataset.id;
+            presetWorkoutNameInput.value = option.dataset.name;
+            presetWorkoutCategoryInput.value = option.dataset.category;
+            selectedPresetDisplay.textContent = `${option.dataset.name} - ${option.dataset.category}`;
+
+            if (presetModalOverlay) {
+                presetModalOverlay.style.display = 'none';
             }
 
-            createWorkout(workout, category, presetId);
+            updateWorkoutButtons();
         });
-    }
+    });
+}
 
+if (customWorkoutInput) {
+    customWorkoutInput.addEventListener('input', updateWorkoutButtons);
+}
 
-    if (addCustomButton) {
-        addCustomButton.addEventListener('click', function () {
-            const workout = customWorkoutInput.value.trim();
-            const category = customCategorySelect.value;
+if (customCategorySelect) {
+    customCategorySelect.addEventListener('change', updateWorkoutButtons);
+}
 
-            if (!workout || !category) {
-                showMessage('Please complete the custom workout section.', 'error');
-                return;
-            }
+if (addPresetButton) {
+    addPresetButton.addEventListener('click', function () {
+        const workout = presetWorkoutNameInput.value;
+        const category = presetWorkoutCategoryInput.value;
+        const presetId = Number(presetWorkoutIdInput.value);
 
-            createWorkout(workout, category, null);
+        if (!workout || !category || !presetId) {
+            showMessage('Please choose a preset workout.', 'error');
+            return;
+        }
 
-        });
-    }
-    updateWorkoutButtons();
+        createWorkout(workout, category, presetId);
+    });
+}
 
+if (addCustomButton) {
+    addCustomButton.addEventListener('click', function () {
+        const workout = customWorkoutInput.value.trim();
+        const category = customCategorySelect.value;
+
+        if (!workout || !category) {
+            showMessage('Please complete the custom workout section.', 'error');
+            return;
+        }
+
+        createWorkout(workout, category, null);
+    });
 }
 
 if (logoutButton) {
@@ -512,6 +663,8 @@ if (logoutButton) {
         window.location.href = '/';
     });
 }
+
+updateWorkoutButtons();
 
 if (window.location.pathname === '/workouts/current') {
     if (!savedToken) {
@@ -533,80 +686,4 @@ if (window.location.pathname === '/workouts') {
     if (!savedToken) {
         window.location.href = '/';
     }
-}
-
-
-function renderWorkoutHistory(historyItems) {
-    if (!historyList) {
-        return;
-    }
-
-    if (!historyItems || historyItems.length === 0) {
-        historyList.innerHTML = '<p class="empty-state">No past workouts found yet.</p>';
-        return;
-    }
-
-    const historyHtml = historyItems.map((session, index) => `
-        <article class="workout-card">
-            <div class="workout-card-header">
-                <h3 class="workout-title">Workout Session ${index + 1}</h3>
-                <span class="category-tag">Completed</span>
-            </div>
-
-            <div class="history-session-list">
-                ${session.completed_workout.map(workout => `
-                    <div class="history-workout-item">
-                        <p><strong>${workout.workout}</strong> - ${workout.category}</p>
-
-                        ${workout.category === 'Strength' ? `
-                            ${Array.isArray(workout.set_details) && workout.set_details.length > 0 ? `
-                                <div class="history-set-list">
-                                    ${workout.set_details.map((setItem, setIndex) => `
-                                        <p>Set ${setIndex + 1}: ${setItem.reps} reps${setItem.kg !== undefined ? `, ${setItem.kg} kg` : ''}</p>
-                                    `).join('')}
-                                </div>
-                            ` : Array.isArray(workout.reps) && workout.reps.length > 0 ? `
-                                <div class="history-set-list">
-                                    ${workout.reps.map((rep, setIndex) => `
-                                        <p>Set ${setIndex + 1}: ${rep} reps</p>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
-                        ` : ''}
-
-                    </div>
-                `).join('')}
-            </div>
-        </article>
-    `).join('');
-
-    historyList.innerHTML = historyHtml;
-}
-
-function loadWorkoutHistory() {
-    const token = localStorage.getItem('access_token');
-
-    if (!token) {
-        showMessage('Please log in first.', 'error');
-        return;
-    }
-
-    fetch('http://127.0.0.1:5000/history-data', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            renderWorkoutHistory(data.data);
-        } else {
-            showMessage(data.message || 'Failed to load workout history.', 'error');
-        }
-    })
-    .catch(error => {
-        console.error('Load history error:', error);
-        showMessage('Failed to load workout history.', 'error');
-    });
 }

@@ -55,17 +55,18 @@
                     <form id="add-workout-form" class="stack-form">
                         <div class="mini-box">
                             <h3>Preset Workout</h3>
-                            <select name="preset_workout" id="preset-workout-select">
-                                <option value="">Choose a preset exercise</option>
-                                {% for workout in preset_workouts %}
-                                    <option
-                                        value="{{ workout.workout }}"
-                                        data-category="{{ workout.category }}"
-                                        data-preset-id="{{ workout.id }}">
-                                        {{ workout.workout }}
-                                    </option>
-                                {% endfor %}
-                            </select>
+
+                            <button type="button" id="open-preset-modal-btn" class="secondary-btn">
+                                Choose Preset Workout
+                            </button>
+
+                            <div id="selected-preset-display" class="selected-preset-display">
+                                No preset selected
+                            </div>
+
+                            <input type="hidden" id="preset-workout-id">
+                            <input type="hidden" id="preset-workout-name">
+                            <input type="hidden" id="preset-workout-category">
 
                             <button type="button" id="add-preset-btn" disabled>Add Preset Workout</button>
                         </div>
@@ -80,16 +81,44 @@
                                 <option value="Flexibility">Flexibility</option>
                             </select>
 
-                            <div id="strength-fields" style="display: none;">
-                                <input type="number" name="sets" id="sets-input" placeholder="Sets" min="1">
-                                <input type="number" name="reps" id="reps-input" placeholder="Reps" min="1">
-                            </div>
-
                             <button type="button" id="add-custom-btn" disabled>Add Custom Workout</button>
                         </div>
                     </form>
                 </aside>
             </main>
+        </div>
+
+        <div id="preset-modal-overlay" class="preset-modal-overlay" style="display: none;">
+            <div class="preset-modal">
+                <div class="preset-modal-header">
+                    <div>
+                        <p class="section-label">Preset Library</p>
+                        <h3>Choose a Workout</h3>
+                    </div>
+                    <button type="button" id="close-preset-modal-btn" class="ghost-btn modal-close-btn">Close</button>
+                </div>
+
+                <select id="preset-category-select">
+                    <option value="">All categories</option>
+                    <option value="Strength">Strength</option>
+                    <option value="Cardio">Cardio</option>
+                    <option value="Flexibility">Flexibility</option>
+                </select>
+
+                <div id="preset-workout-list" class="preset-workout-list">
+                    {% for workout in preset_workouts %}
+                        <button
+                            type="button"
+                            class="preset-workout-option"
+                            data-id="{{ workout.id }}"
+                            data-name="{{ workout.workout }}"
+                            data-category="{{ workout.category }}">
+                            <span>{{ workout.workout }}</span>
+                            <small>{{ workout.category }}</small>
+                        </button>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
 
         <script src="{{ url_for('static', filename='js/app.js') }}"></script>

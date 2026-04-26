@@ -9,29 +9,30 @@ import re #for password validation
 from datetime import timedelta 
 
 
-PRESET_FILE = "data/workouts.json"
-WORKOUT_SECTION_FILE = "data/workoutsection.json"
-WORKOUT_HISTORY_FILE = "data/workouthistory.json"
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
+DB_PATH = BASE_DIR / "users.db"
 
-Path("data").mkdir(exist_ok=True)
+DATA_DIR.mkdir(exist_ok=True)
 
-if not Path(PRESET_FILE).exists():
+PRESET_FILE = DATA_DIR / "workouts.json"
+WORKOUT_SECTION_FILE = DATA_DIR / "workoutsection.json"
+WORKOUT_HISTORY_FILE = DATA_DIR / "workouthistory.json"
+
+if not PRESET_FILE.exists():
     with open(PRESET_FILE, "w") as f:
         f.write("[]")
 
-if not Path(WORKOUT_SECTION_FILE).exists():
+if not WORKOUT_SECTION_FILE.exists():
     with open(WORKOUT_SECTION_FILE, "w") as f:
         f.write("[]")
 
-if not Path(WORKOUT_HISTORY_FILE).exists():
+if not WORKOUT_HISTORY_FILE.exists():
     with open(WORKOUT_HISTORY_FILE, "w") as f:
         f.write("[]")
 
 
-
 # Initialize Flask app and JWT
-BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "users.db"
 ALLOWED_CATEGORIES = {"Strength", "Cardio", "Flexibility"}
 
 app = Flask(__name__)
@@ -61,18 +62,7 @@ def custom_expired_token_response(jwt_header, jwt_payload):
         "message": "Token has expired. Please log in again."
     }), 401
 
-PRESET_FILE = "data/workouts.json"
-WORKOUT_SECTION_FILE = "data/workoutsection.json"
 
-Path("data").mkdir(exist_ok=True)
-
-if not Path(PRESET_FILE).exists():
-    with open(PRESET_FILE, "w") as f:
-        f.write("[]")
-
-if not Path(WORKOUT_SECTION_FILE).exists():
-    with open(WORKOUT_SECTION_FILE, "w") as f:
-        f.write("[]")
 
 
 # Assuming you have a SQLite database 'users.db'
