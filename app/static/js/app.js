@@ -287,31 +287,48 @@ function renderWorkouts(workouts) {
             </div>
         `).join('');
 
+        const thumbnailHtml = workout.exerciseId
+            ? `
+                <div class="current-workout-media">
+                    <img
+                        src="/exercise-thumbnail/${encodeURIComponent(workout.exerciseId)}"
+                        alt="${escapeHtml(workout.workout)} thumbnail"
+                        class="current-workout-thumb"
+                        loading="lazy">
+                </div>
+            `
+            : '';
+
         return `
             <article class="workout-card">
-                <div class="workout-card-header">
-                    <h3 class="workout-title">${workout.workout}</h3>
-                    <span class="category-tag">${workout.equipment || 'Custom'}</span>
-                </div>
+                <div class="current-workout-layout">
+                    ${thumbnailHtml}
+                    <div class="current-workout-main">
+                        <div class="workout-card-header">
+                            <h3 class="workout-title">${workout.workout}</h3>
+                            <span class="category-tag">${workout.equipment || 'Custom'}</span>
+                        </div>
 
-                ${renderWorkoutDetails(workout)}
+                        ${renderWorkoutDetails(workout)}
 
-                ${(workout.gifUrl || (Array.isArray(workout.instructions) && workout.instructions.length > 0)) ? `
-                    <button
-                        type="button"
-                        class="toggle-detail-btn"
-                        data-id="${workout.id}">
-                        Show Details
-                    </button>
-                ` : ''}
+                        ${(workout.gifUrl || (Array.isArray(workout.instructions) && workout.instructions.length > 0)) ? `
+                            <button
+                                type="button"
+                                class="toggle-detail-btn"
+                                data-id="${workout.id}">
+                                Show Details
+                            </button>
+                        ` : ''}
 
-                <div class="strength-editor" data-id="${workout.id}">
-                    <div class="set-list" data-id="${workout.id}">
-                        ${setRows}
-                    </div>
-                    <div class="strength-actions">
-                        <button type="button" class="add-set-btn" data-id="${workout.id}">Add Set</button>
-                        <button type="button" class="save-strength-btn" data-id="${workout.id}">Save</button>
+                        <div class="strength-editor" data-id="${workout.id}">
+                            <div class="set-list" data-id="${workout.id}">
+                                ${setRows}
+                            </div>
+                            <div class="strength-actions">
+                                <button type="button" class="add-set-btn" data-id="${workout.id}">Add Set</button>
+                                <button type="button" class="save-strength-btn" data-id="${workout.id}">Save</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

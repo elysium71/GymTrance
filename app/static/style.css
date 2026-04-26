@@ -248,16 +248,46 @@ button[type="submit"] {
 }
 
 .workout-card {
-    padding: 18px;
-    border-radius: 18px;
+    padding: 20px;
+    border-radius: 20px;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
     border: 1px solid var(--line);
+}
+
+.current-workout-layout {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+}
+
+.current-workout-media {
+    width: 72px;
+    height: 72px;
+    overflow: hidden;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.current-workout-thumb {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.current-workout-main {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
 }
 
 .workout-card-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     gap: 12px;
 }
 
@@ -265,6 +295,7 @@ button[type="submit"] {
     margin: 0;
     font-size: 1.05rem;
     font-weight: 700;
+    line-height: 1.25;
 }
 
 .workout-id {
@@ -311,6 +342,7 @@ button:disabled:hover {
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+    flex-shrink: 0;
 }
 
 
@@ -394,6 +426,15 @@ button:disabled:hover {
     .hero-badge {
         width: 100%;
     }
+
+    .current-workout-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .current-workout-media {
+        width: 84px;
+        height: 84px;
+    }
 }
 
 .delete-workout-btn {
@@ -410,7 +451,9 @@ button:disabled:hover {
 .strength-editor {
     display: grid;
     gap: 12px;
-    margin-top: 14px;
+    margin-top: 2px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .set-list {
@@ -420,7 +463,7 @@ button:disabled:hover {
 
 .set-row {
     display: grid;
-    grid-template-columns: 90px minmax(140px, 1fr) minmax(140px, 1fr) 150px;
+    grid-template-columns: 70px minmax(0, 1fr) minmax(0, 1fr) 150px;
     gap: 12px;
     align-items: center;
 }
@@ -500,6 +543,21 @@ button:disabled:hover {
     .remove-set-btn {
         width: auto;
         min-width: 140px;
+    }
+}
+
+@media (max-width: 1180px) {
+    .set-row {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .set-label {
+        grid-column: 1 / -1;
+    }
+
+    .remove-set-btn {
+        grid-column: 1 / -1;
+        width: 100%;
     }
 }
 
@@ -639,8 +697,8 @@ button:disabled:hover {
 
 .workout-meta {
     display: grid;
-    gap: 6px;
-    margin-top: 14px;
+    gap: 4px;
+    margin-top: 0;
     color: var(--muted);
     font-size: 0.95rem;
 }
@@ -651,11 +709,12 @@ button:disabled:hover {
 
 .toggle-detail-btn {
     width: auto;
-    margin-top: 14px;
+    margin-top: 0;
     padding-inline: 18px;
     background: rgba(120, 156, 255, 0.12);
     color: #d4e1ff;
     border: 1px solid rgba(120, 156, 255, 0.28);
+    justify-self: start;
 }
 
 .toggle-detail-btn:hover {
