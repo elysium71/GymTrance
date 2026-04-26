@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Workouts - GymTrance</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    </head>
+    <body>
+        <div class="page-shell">
+            <header class="hero">
+                <div class="hero-copy">
+                    <p class="eyebrow">Workout Hub</p>
+                    <h1>Workout Center</h1>
+                    <p class="hero-text">
+                        Start a new workout session or review your past training history.
+                    </p>
+                </div>
+
+                <div class="hero-side">
+                    <button type="button" id="logout-btn" class="ghost-btn hero-logout">Logout</button>
+
+                    <div class="hero-badge">
+                        <span class="badge-label">GymTrance</span>
+                        <strong>Choose Your Path</strong>
+                    </div>
+                </div>
+            </header>
+
+            <main class="hub-grid">
+                <a href="/workouts/current" class="hub-card">
+                    <p class="section-label">Session</p>
+                    <h2>Start a New Workout</h2>
+                    <p>Open your active workout dashboard, add exercises, and finish the session when done.</p>
+                </a>
+
+                <a href="/workouts/history" class="hub-card">
+                    <p class="section-label">Archive</p>
+                    <h2>View Past Workouts</h2>
+                    <p>See your completed workout history and review previous training sessions.</p>
+                </a>
+            </main>
+        </div>
+
+        <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    </body>
+</html>

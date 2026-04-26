@@ -8,14 +8,35 @@ import sqlite3 #SQL database for user authentication
 import re #for password validation
 from datetime import timedelta 
 
-# Initialize Flask app and JWT
+
 BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR / "data"
 DB_PATH = BASE_DIR / "users.db"
-ALLOWED_CATEGORIES = {"Strength", "Cardio", "Flexibility"}
+
+DATA_DIR.mkdir(exist_ok=True)
+
+PRESET_FILE = DATA_DIR / "workouts.json"
+WORKOUT_SECTION_FILE = DATA_DIR / "workoutsection.json"
+WORKOUT_HISTORY_FILE = DATA_DIR / "workouthistory.json"
+
+if not PRESET_FILE.exists():
+    with open(PRESET_FILE, "w", encoding="utf-8") as f:
+        f.write("[]")
+
+if not WORKOUT_SECTION_FILE.exists():
+    with open(WORKOUT_SECTION_FILE, "w", encoding="utf-8") as f:
+        f.write("[]")
+
+if not WORKOUT_HISTORY_FILE.exists():
+    with open(WORKOUT_HISTORY_FILE, "w", encoding="utf-8") as f:
+        f.write("[]")
+
+
+# Initialize Flask app and JWT
 
 app = Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'your-secret-key'  # secret key
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)  # Set token expiration
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=30)  # Set token expiration
 jwt = JWTManager(app)
 # Custom response for unauthorized access
 
@@ -40,13 +61,7 @@ def custom_expired_token_response(jwt_header, jwt_payload):
         "message": "Token has expired. Please log in again."
     }), 401
 
-DATA_FILE = "data/workouts.json"
 
-# ensure file exists
-Path("data").mkdir(exist_ok=True)
-if not Path(DATA_FILE).exists():
-    with open(DATA_FILE, "w") as f:
-        f.write("[]")
 
 
 # Assuming you have a SQLite database 'users.db'
@@ -137,24 +152,127 @@ def login():
     conn.close()
     return jsonify({"access_token": access_token}), 200
 
+
+@app.route("/workouts")
+def workouts_home():
+    return render_template("workouts_home.html")
+
+@app.route("/workouts/current")
+def current_workout_page():
+    preset_workouts = load_preset_workouts()
+    equipment_options = sorted({
+        workout.get("equipment").strip()
+        for workout in preset_workouts
+        if isinstance(workout.get("equipment"), str) and workout.get("equipment").strip()
+    })
+    primary_muscle_options = sorted({
+        muscle.strip()
+        for workout in preset_workouts
+        for muscle in workout.get("primaryMuscles", [])
+        if isinstance(muscle, str) and muscle.strip()
+    })
+    level_options = sorted({
+        workout.get("level").strip()
+        for workout in preset_workouts
+        if isinstance(workout.get("level"), str) and workout.get("level").strip()
+    })
+    return render_template(
+        "workouts_current.html",
+        preset_workouts=preset_workouts,
+        equipment_options=equipment_options,
+        primary_muscle_options=primary_muscle_options,
+        level_options=level_options
+    )
+
+@app.route("/workouts/history")
+def workout_history_page():
+    return render_template("workouts_history.html")
+
+
+
 # load data safely
-def load_workouts():
+def load_preset_workouts():
     try:
-        with open(DATA_FILE, "r") as file:
+        with open(PRESET_FILE, "r", encoding="utf-8") as file:
             return json.load(file)
     except (json.JSONDecodeError, FileNotFoundError):
-        with open(DATA_FILE, "w") as file:
+        with open(PRESET_FILE, "w", encoding="utf-8") as file:
             json.dump([], file)
         return []
 
-# save data
-def save_workouts(workouts):
-    with open(DATA_FILE, "w") as file:
+def load_workout_sections():
+    try:
+        with open(WORKOUT_SECTION_FILE, "r", encoding="utf-8") as file:
+            return json.load(file)
+    except (json.JSONDecodeError, FileNotFoundError):
+        with open(WORKOUT_SECTION_FILE, "w", encoding="utf-8") as file:
+            json.dump([], file)
+        return []
+
+def save_workout_sections(workouts):
+    with open(WORKOUT_SECTION_FILE, "w", encoding="utf-8") as file:
         json.dump(workouts, file, indent=4)
+
+def load_workout_history():
+    try:
+        with open(WORKOUT_HISTORY_FILE, "r", encoding="utf-8") as file:
+            return json.load(file)
+    except (json.JSONDecodeError, FileNotFoundError):
+        with open(WORKOUT_HISTORY_FILE, "w", encoding="utf-8") as file:
+            json.dump([], file)
+        return []
+
+def save_workout_history(history):
+    with open(WORKOUT_HISTORY_FILE, "w", encoding="utf-8") as file:
+        json.dump(history, file, indent=4)
+
+
+def normalize_text(value):
+    if value is None:
+        return ""
+    if not isinstance(value, str):
+        return ""
+    return value.strip()
+
+
+def normalize_string_list(value):
+    if value is None:
+        return []
+
+    if isinstance(value, str):
+        parts = [item.strip() for item in value.split(",")]
+        return [item for item in parts if item]
+
+    if isinstance(value, list):
+        cleaned_items = []
+        for item in value:
+            if isinstance(item, str):
+                stripped = item.strip()
+                if stripped:
+                    cleaned_items.append(stripped)
+        return cleaned_items
+
+    return []
+
 
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/history-data", methods=["GET"])
+@jwt_required()
+def get_history_data():
+    current_user = get_jwt_identity()
+    history = load_workout_history()
+
+    user_history = [item for item in history if item.get("owner") == current_user]
+
+    return jsonify({
+        "status": "success",
+        "message": "Workout history retrieved",
+        "data": user_history
+    }), 200
 
 # GET all workouts
 
@@ -162,20 +280,19 @@ def index():
 @jwt_required()
 def get_data():
     current_user = get_jwt_identity()
-    workouts = load_workouts()
+    workouts = load_workout_sections()
 
     user_workouts = [w for w in workouts if w.get("owner") == current_user]
 
-    category = (request.args.get("category") or "").strip()
     keyword = (request.args.get("q") or "").strip().lower()
-
-    if category:
-        user_workouts = [w for w in user_workouts if w.get("category") == category]
 
     if keyword:
         user_workouts = [
             w for w in user_workouts
             if keyword in (w.get("workout") or "").lower()
+            or keyword in (w.get("equipment") or "").lower()
+            or any(keyword in muscle.lower() for muscle in w.get("primaryMuscles", []))
+            or any(keyword in muscle.lower() for muscle in w.get("secondaryMuscles", []))
         ]
 
     return jsonify({
@@ -183,6 +300,7 @@ def get_data():
         "message": "Workouts retrieved",
         "data": user_workouts
     }), 200
+
 
 
 # POST new workout
@@ -193,37 +311,43 @@ def handle_post():
 
     if not data:
         return jsonify({"status": "error", "message": "No data provided"}), 400
-    if "id" not in data or "workout" not in data or "category" not in data:
-        return jsonify({"status": "error", "message": "Missing fields"}), 400
-    if not isinstance(data["id"], int):
-        return jsonify({"status": "error", "message": "ID must be integer"}), 400
+    if "workout" not in data:
+        return jsonify({"status": "error", "message": "Missing workout name"}), 400
     if not isinstance(data["workout"], str) or not data["workout"].strip():
         return jsonify({"status": "error", "message": "Workout must be non-empty string"}), 400
-    if not isinstance(data["category"], str):
-        return jsonify({"status": "error", "message": "Category must be string"}), 400
 
-    category = data["category"].strip().title()
-    if category not in ALLOWED_CATEGORIES:
-        return jsonify({
-            "status": "error",
-            "message": f"Invalid category. Allowed: {', '.join(sorted(ALLOWED_CATEGORIES))}"
-        }), 400
+    preset_id = data.get("preset_id")
+    if preset_id is not None and not isinstance(preset_id, str):
+        return jsonify({"status": "error", "message": "preset_id must be string"}), 400
+
+    equipment = normalize_text(data.get("equipment"))
+    primary_muscles = normalize_string_list(data.get("primary_muscles"))
+    secondary_muscles = normalize_string_list(data.get("secondary_muscles"))
 
     current_user = get_jwt_identity()
-    workouts = load_workouts()
+    workouts = load_workout_sections()
 
-    if any(item.get("id") == data["id"] for item in workouts):
-        return jsonify({"status": "error", "message": "Workout id already existed"}), 400
+    custom_ids = [
+        item.get("id", 0)
+        for item in workouts
+        if isinstance(item.get("id"), int) and item.get("id") >= 10000
+    ]
+
+    next_id = max(custom_ids, default=9999) + 1
 
     new_workout = {
-        "id": data["id"],
+        "id": next_id,
+        "preset_id": preset_id,
         "workout": data["workout"].strip(),
-        "category": category,
-        "owner": current_user
+        "equipment": equipment,
+        "primaryMuscles": primary_muscles,
+        "secondaryMuscles": secondary_muscles,
+        "owner": current_user,
+        "is_preset": False
     }
 
     workouts.append(new_workout)
-    save_workouts(workouts)
+    save_workout_sections(workouts)
 
     return jsonify({
         "status": "success",
@@ -231,6 +355,34 @@ def handle_post():
         "data": new_workout
     }), 201
 
+@app.route("/finish-workout", methods=["POST"])
+@jwt_required()
+def finish_workout():
+    current_user = get_jwt_identity()
+    current_workouts = load_workout_sections()
+    workout_history = load_workout_history()
+
+    user_workouts = [w for w in current_workouts if w.get("owner") == current_user]
+
+    if not user_workouts:
+        return jsonify({
+            "status": "error",
+            "message": "No active workout to finish"
+        }), 400
+
+    workout_history.append({
+        "owner": current_user,
+        "completed_workout": user_workouts
+    })
+    save_workout_history(workout_history)
+
+    remaining_workouts = [w for w in current_workouts if w.get("owner") != current_user]
+    save_workout_sections(remaining_workouts)
+
+    return jsonify({
+        "status": "success",
+        "message": "Workout finished successfully"
+    }), 200
 
 
 # PUT update workout
@@ -241,11 +393,20 @@ def update_workout(workout_id):
 
     if not data:
         return jsonify({"status": "error", "message": "No data provided"}), 400
-    if "workout" not in data and "category" not in data:
+    if (
+        "workout" not in data
+        and "equipment" not in data
+        and "primary_muscles" not in data
+        and "secondary_muscles" not in data
+        and "sets" not in data
+        and "reps" not in data
+        and "set_details" not in data
+    ):
         return jsonify({"status": "error", "message": "Nothing to update"}), 400
 
+
     current_user = get_jwt_identity()
-    workouts = load_workouts()
+    workouts = load_workout_sections()
     workout_to_update = None
 
     for w in workouts:
@@ -261,16 +422,58 @@ def update_workout(workout_id):
                     return jsonify({"status": "error", "message": "Workout must be non-empty string"}), 400
                 w["workout"] = data["workout"].strip()
 
-            if "category" in data:
-                if not isinstance(data["category"], str):
-                    return jsonify({"status": "error", "message": "Category must be string"}), 400
-                category = data["category"].strip().title()
-                if category not in ALLOWED_CATEGORIES:
-                    return jsonify({
-                        "status": "error",
-                        "message": f"Invalid category. Allowed: {', '.join(sorted(ALLOWED_CATEGORIES))}"
-                    }), 400
-                w["category"] = category
+            if "equipment" in data:
+                if data["equipment"] is not None and not isinstance(data["equipment"], str):
+                    return jsonify({"status": "error", "message": "Equipment must be string"}), 400
+                w["equipment"] = normalize_text(data.get("equipment"))
+
+            if "primary_muscles" in data:
+                w["primaryMuscles"] = normalize_string_list(data.get("primary_muscles"))
+
+            if "secondary_muscles" in data:
+                w["secondaryMuscles"] = normalize_string_list(data.get("secondary_muscles"))
+
+            if "sets" in data:
+                if not isinstance(data["sets"], int) or data["sets"] <= 0:
+                    return jsonify({"status": "error", "message": "Sets must be a positive integer"}), 400
+                w["sets"] = data["sets"]
+
+            if "reps" in data:
+                if not isinstance(data["reps"], list) or not data["reps"]:
+                    return jsonify({"status": "error", "message": "Reps must be a non-empty list"}), 400
+                if not all(isinstance(rep, int) and rep > 0 for rep in data["reps"]):
+                    return jsonify({"status": "error", "message": "Each rep value must be a positive integer"}), 400
+                w["reps"] = data["reps"]
+                w["sets"] = len(data["reps"])
+            
+            if "set_details" in data:
+                if not isinstance(data["set_details"], list) or not data["set_details"]:
+                    return jsonify({"status": "error", "message": "set_details must be a non-empty list"}), 400
+
+                cleaned_sets = []
+                for set_item in data["set_details"]:
+                    if not isinstance(set_item, dict):
+                        return jsonify({"status": "error", "message": "Each set must be an object"}), 400
+
+                    reps = set_item.get("reps")
+                    kg = set_item.get("kg", 0)
+
+                    if not isinstance(reps, int) or reps <= 0:
+                        return jsonify({"status": "error", "message": "Each set reps must be a positive integer"}), 400
+
+                    if not isinstance(kg, (int, float)) or kg < 0:
+                        return jsonify({"status": "error", "message": "Each set kg must be zero or positive"}), 400
+
+                    cleaned_sets.append({
+                        "reps": reps,
+                        "kg": kg
+                    })
+
+                w["set_details"] = cleaned_sets
+                w["sets"] = len(cleaned_sets)
+                w["reps"] = [item["reps"] for item in cleaned_sets]
+
+
 
             workout_to_update = w
             break
@@ -278,7 +481,7 @@ def update_workout(workout_id):
     if not workout_to_update:
         return jsonify({"status": "error", "message": "Workout not found"}), 404
 
-    save_workouts(workouts)
+    save_workout_sections(workouts)
 
     return jsonify({
         "status": "success",
@@ -293,7 +496,7 @@ def update_workout(workout_id):
 @jwt_required()
 def delete_workout(workout_id):
     current_user = get_jwt_identity()
-    workouts = load_workouts()
+    workouts = load_workout_sections()
 
     workout_to_delete = None
     for w in workouts:
@@ -310,12 +513,14 @@ def delete_workout(workout_id):
         return jsonify({"status": "error", "message": "Workout not found"}), 404
 
     workouts.remove(workout_to_delete)
-    save_workouts(workouts)
+    save_workout_sections(workouts)
+
 
     return jsonify({
         "status": "success",
         "message": "Workout deleted"
     }), 200
+
 
 
 if __name__ == "__main__":

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Current Workout - GymTrance</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    </head>
+    <body>
+        <div class="page-shell">
+            <header class="hero">
+                <div class="hero-copy">
+                    <p class="eyebrow">Member Dashboard</p>
+                    <h1>Current Workout</h1>
+                    <p class="hero-text">
+                        Build your active workout session and finish it when you're done.
+                    </p>
+                </div>
+
+                <div class="hero-side">
+                    <button type="button" id="logout-btn" class="ghost-btn hero-logout">Logout</button>
+
+                    <div class="hero-badge">
+                        <span class="badge-label">Dashboard</span>
+                        <strong>Active Session</strong>
+                    </div>
+                </div>
+            </header>
+
+            <main class="dashboard-layout">
+                <section class="panel content-panel workout-column">
+                    <div id="message-box" class="message-box"></div>
+
+                    <div class="section-header workout-header">
+                        <div>
+                            <p class="section-label">Dashboard</p>
+                            <h2>Your Workouts</h2>
+                        </div>
+                    </div>
+
+                    <div id="workout-list" class="workout-list"></div>
+
+                    <div class="dashboard-actions bottom-actions">
+                        <button type="button" id="load-data-btn" class="secondary-btn">Refresh</button>
+                        <button type="button" id="finish-workout-btn" class="secondary-btn">Finish Workout</button>
+                    </div>
+                </section>
+
+                <aside class="panel add-panel add-column">
+                    <div class="panel-heading">
+                        <h2>Add Workout</h2>
+                        <p>Choose a built-in exercise or create your own custom one.</p>
+                    </div>
+
+                    <form id="add-workout-form" class="stack-form">
+                        <div class="mini-box">
+                            <h3>Preset Workout</h3>
+
+                            <button type="button" id="open-preset-modal-btn" class="secondary-btn">
+                                Choose Preset Workout
+                            </button>
+
+                            <input type="hidden" id="preset-workout-id">
+                            <input type="hidden" id="preset-workout-name">
+                            <input type="hidden" id="preset-workout-equipment">
+                            <input type="hidden" id="preset-workout-primary-muscles">
+                            <input type="hidden" id="preset-workout-secondary-muscles">
+                        </div>
+
+                        <div class="mini-box">
+                            <h3>Custom Workout</h3>
+                            <input type="text" name="custom_workout" id="custom-workout-input" placeholder="Type a custom workout">
+                            <input type="text" name="equipment" id="custom-equipment-input" placeholder="Equipment">
+                            <input type="text" name="primary_muscles" id="custom-primary-muscles-input" placeholder="Primary muscles (comma separated)">
+                            <input type="text" name="secondary_muscles" id="custom-secondary-muscles-input" placeholder="Secondary muscles (comma separated)">
+
+                            <button type="button" id="add-custom-btn" disabled>Add Custom Workout</button>
+                        </div>
+                    </form>
+                </aside>
+            </main>
+        </div>
+
+        <div id="preset-modal-overlay" class="preset-modal-overlay" style="display: none;">
+            <div class="preset-modal">
+                <div class="preset-modal-header">
+                    <div>
+                        <p class="section-label">Preset Library</p>
+                        <h3>Choose a Workout</h3>
+                    </div>
+                    <button type="button" id="close-preset-modal-btn" class="ghost-btn modal-close-btn">Close</button>
+                </div>
+
+                <div class="preset-filter-grid">
+                    <label class="preset-filter">
+                        <span>Equipment</span>
+                        <select id="preset-equipment-select">
+                            <option value="">All equipment</option>
+                            {% for equipment in equipment_options %}
+                                <option value="{{ equipment }}">{{ equipment }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+
+                    <label class="preset-filter">
+                        <span>Primary Muscle</span>
+                        <select id="preset-primary-muscle-select">
+                            <option value="">All primary muscles</option>
+                            {% for muscle in primary_muscle_options %}
+                                <option value="{{ muscle }}">{{ muscle }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+
+                    <label class="preset-filter">
+                        <span>Level</span>
+                        <select id="preset-level-select">
+                            <option value="">All levels</option>
+                            {% for level in level_options %}
+                                <option value="{{ level }}">{{ level }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                </div>
+
+                <div id="preset-workout-list" class="preset-workout-list">
+                    {% for workout in preset_workouts %}
+                        <button
+                            type="button"
+                            class="preset-workout-option"
+                            data-id="{{ workout.id }}"
+                            data-name="{{ workout.name }}"
+                            data-equipment="{{ workout.equipment or '' }}"
+                            data-level="{{ workout.level or '' }}"
+                            data-primary-muscles='{{ workout.primaryMuscles|tojson }}'
+                            data-secondary-muscles='{{ workout.secondaryMuscles|tojson }}'>
+                            <span>{{ workout.name }}</span>
+                            <small>
+                                {{ workout.equipment or 'No equipment listed' }}
+                                {% if workout.primaryMuscles %}
+                                    | {{ workout.primaryMuscles|join(', ') }}
+                                {% endif %}
+                                {% if workout.level %}
+                                    | {{ workout.level }}
+                                {% endif %}
+                            </small>
+                        </button>
+                    {% endfor %}
+                </div>
+
+                <div class="preset-modal-actions">
+                    <button type="button" id="add-preset-btn" disabled>Add Preset Workout</button>
+                </div>
+            </div>
+        </div>
+
+        <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    </body>
+</html>

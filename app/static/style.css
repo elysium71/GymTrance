@@ -1,42 +1,756 @@
+:root {
+    --bg: #0a0d12;
+    --bg-soft: #121720;
+    --panel: rgba(16, 22, 31, 0.92);
+    --panel-strong: #171d27;
+    --line: rgba(255, 255, 255, 0.08);
+    --text: #f5f7fb;
+    --muted: #9ba7b8;
+    --accent: #ff6b2c;
+    --accent-strong: #ff844f;
+    --success: #3ddc97;
+    --error: #ff5f6d;
+    --shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+    --radius-lg: 24px;
+    --radius-md: 16px;
+    --radius-sm: 12px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
 body {
-    font-family: Arial, sans-serif;
     margin: 0;
-    padding: 0;
-    background-color: #f4f4f4;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--text);
+    background:
+        radial-gradient(circle at top left, rgba(255, 107, 44, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(61, 220, 151, 0.12), transparent 24%),
+        linear-gradient(180deg, #090c11 0%, #0f131a 100%);
+    min-height: 100vh;
 }
 
-h1 {
-    text-align: center;
-    color: #333;
-}
-
-#registration-form, #login-form {
-    max-width: 400px;
+.page-shell {
+    width: min(1200px, calc(100% - 32px));
     margin: 0 auto;
-    padding: 20px;
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 28px 0 48px;
 }
 
-input[type="text"], input[type="password"] {
+.hero {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: flex-end;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    background: linear-gradient(135deg, rgba(255, 107, 44, 0.16), rgba(255, 255, 255, 0.03));
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    box-shadow: var(--shadow);
+}
+
+.eyebrow,
+.section-label,
+.badge-label {
+    margin: 0 0 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 0.75rem;
+    color: var(--accent-strong);
+}
+
+.hero h1 {
+    margin: 0;
+    font-size: clamp(2.3rem, 5vw, 4rem);
+    line-height: 0.95;
+}
+
+.hero-text {
+    max-width: 560px;
+    margin: 14px 0 0;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.hero-badge {
+    min-width: 170px;
+    padding: 18px 20px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--line);
+}
+
+.hero-badge strong {
+    font-size: 1.1rem;
+}
+
+.dashboard {
+    display: grid;
+    gap: 24px;
+}
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+}
+
+.auth-panel,
+.content-panel,
+.add-panel {
+    padding: 24px;
+}
+
+.panel-heading h2,
+.section-header h2,
+.auth-card h3 {
+    margin: 0;
+}
+
+.panel-heading p {
+    margin: 8px 0 0;
+    color: var(--muted);
+}
+
+.auth-grid,
+.content-grid {
+    display: grid;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.auth-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.content-grid {
+    grid-template-columns: 1.6fr 1fr;
+    align-items: start;
+}
+
+.auth-card,
+.workout-panel,
+.add-panel {
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 20px;
+}
+
+.stack-form {
+    display: grid;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+
+
+input,
+select,
+button {
     width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    border-radius: 14px;
+    font: inherit;
+}
+
+input,
+select {
+    padding: 14px 15px;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    outline: none;
+}
+
+input::placeholder {
+    color: #7f8a98;
+}
+
+input:focus,
+select:focus {
+    border-color: rgba(255, 107, 44, 0.7);
+    box-shadow: 0 0 0 3px rgba(255, 107, 44, 0.15);
+}
+
+select option {
+    color: #f5f7fb;
+    background: #202733;
 }
 
 button {
-    width: 100%;
-    padding: 10px;
-    background-color: #28a745;
-    color: white;
+    padding: 14px 16px;
     border: none;
-    border-radius: 4px;
     cursor: pointer;
+    transition: transform 0.18s ease, opacity 0.18s ease, background 0.18s ease;
 }
 
 button:hover {
-    background-color: #218838;
+    transform: translateY(-1px);
+    opacity: 0.96;
+}
+
+.stack-form button,
+button[type="submit"] {
+    background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+    color: #fff;
+    font-weight: 700;
+}
+
+.action-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.secondary-btn {
+    background: #232b38;
+    color: var(--text);
+    border: 1px solid var(--line);
+}
+
+.ghost-btn {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--line);
+}
+
+.message-box {
+    min-height: 24px;
+    margin-top: 18px;
+    font-weight: 600;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.workout-list {
+    display: grid;
+    gap: 14px;
+}
+
+.empty-state {
+    margin: 0;
+    padding: 22px;
+    color: var(--muted);
+    text-align: center;
+    border: 1px dashed rgba(255, 255, 255, 0.14);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.workout-card {
+    padding: 18px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+    border: 1px solid var(--line);
+}
+
+.workout-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.workout-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.workout-id {
+    margin: 12px 0 0;
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+
+.mini-box {
+    padding: 16px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--line);
+}
+
+.mini-box h3 {
+    margin: 0 0 12px;
+    font-size: 1rem;
+}
+
+button:disabled {
+    background: #5c6470;
+    color: #c9d0d8;
+    cursor: not-allowed;
+    opacity: 0.65;
+    transform: none;
+}
+
+button:disabled:hover {
+    transform: none;
+    opacity: 0.65;
+}
+
+.category-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 92px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(255, 107, 44, 0.16);
+    color: #ffd0bf;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+
+.dashboard-layout {
+    display: grid;
+    grid-template-columns: 1.55fr 0.95fr;
+    gap: 24px;
+    align-items: start;
+}
+
+.workout-column {
+    order: 1;
+}
+
+.add-column {
+    order: 2;
+    position: sticky;
+    top: 24px;
+}
+
+.hero-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 14px;
+}
+
+.hero-logout {
+    width: auto;
+    min-width: 120px;
+    padding-inline: 22px;
+}
+
+.workout-header {
+    margin-bottom: 18px;
+}
+
+.bottom-actions {
+    display: flex;
+    justify-content: flex-start;
+    gap: 12px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+}
+
+.bottom-actions button {
+    width: auto;
+    min-width: 160px;
+}
+
+@media (max-width: 1100px) {
+    .dashboard-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .add-column {
+        position: static;
+    }
+
+    .hero-side {
+        width: 100%;
+        align-items: flex-start;
+    }
+}
+
+
+
+
+@media (max-width: 900px) {
+    .auth-grid,
+    .content-grid,
+    .action-row {
+        grid-template-columns: 1fr;
+    }
+
+    .hero {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .hero-badge {
+        width: 100%;
+    }
+}
+
+.delete-workout-btn {
+    margin-top: 14px;
+    background: rgba(255, 95, 109, 0.16);
+    color: #ffb8bf;
+    border: 1px solid rgba(255, 95, 109, 0.3);
+}
+
+.delete-workout-btn:hover {
+    background: rgba(255, 95, 109, 0.24);
+}
+
+.strength-editor {
+    display: grid;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.set-list {
+    display: grid;
+    gap: 10px;
+}
+
+.set-row {
+    display: grid;
+    grid-template-columns: 90px minmax(140px, 1fr) minmax(140px, 1fr) 150px;
+    gap: 12px;
+    align-items: center;
+}
+
+.set-row > * {
+    min-width: 0;
+}
+
+.set-label {
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+.set-row input {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+}
+
+.remove-set-btn {
+    width: 150px;
+    margin: 0;
+    background: rgba(255, 95, 109, 0.16);
+    color: #ffb8bf;
+    border: 1px solid rgba(255, 95, 109, 0.3);
+}
+
+.remove-set-btn:hover {
+    background: rgba(255, 95, 109, 0.24);
+}
+
+
+.save-strength-btn {
+    background: rgba(61, 220, 151, 0.16);
+    color: #b8ffe0;
+    border: 1px solid rgba(61, 220, 151, 0.3);
+}
+
+.save-strength-btn:hover {
+    background: rgba(61, 220, 151, 0.24);
+}
+
+.remove-set-btn {
+    background: rgba(255, 95, 109, 0.16);
+    color: #ffb8bf;
+    border: 1px solid rgba(255, 95, 109, 0.3);
+}
+
+
+
+.save-strength-btn:hover {
+    background: rgba(61, 220, 151, 0.24);
+}
+
+@media (max-width: 900px) {
+    .set-row {
+        grid-template-columns: 1fr;
+    }
+
+    .set-label {
+        margin-bottom: -4px;
+    }
+
+    .remove-set-btn,
+    .save-strength-btn,
+    .add-set-btn {
+        width: 100%;
+    }
+    .set-row input {
+        width: 100%;
+        min-width: 0;
+    }
+    .remove-set-btn {
+        width: auto;
+        min-width: 140px;
+    }
+}
+
+
+@media (max-width: 640px) {
+    .page-shell {
+        width: min(100% - 20px, 1200px);
+        padding-top: 16px;
+    }
+
+    .hero,
+    .auth-panel,
+    .content-panel,
+    .add-panel {
+        padding: 18px;
+    }
+
+    .hero h1 {
+        font-size: 2.3rem;
+    }
+}
+
+
+
+@media (max-width: 900px) {
+    .set-row {
+        grid-template-columns: 1fr;
+    }
+
+    .remove-set-btn,
+    .save-strength-btn,
+    .add-set-btn {
+        width: 100%;
+    }
+}
+
+.hub-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+}
+
+.hub-card {
+    display: block;
+    padding: 28px;
+    border-radius: 24px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    color: var(--text);
+    text-decoration: none;
+    transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.hub-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255, 107, 44, 0.35);
+}
+
+.hub-card h2 {
+    margin: 0 0 10px;
+}
+
+.hub-card p:last-child {
+    margin: 0;
+    color: var(--muted);
+}
+
+.history-session-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 14px;
+    color: var(--muted);
+}
+
+@media (max-width: 900px) {
+    .hub-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.history-workout-item {
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.history-workout-item:last-child {
+    border-bottom: none;
+}
+
+.history-workout-item p {
+    margin: 4px 0;
+}
+
+.history-set-list {
+    margin-top: 8px;
+    padding-left: 10px;
+    color: var(--muted);
+}
+
+
+.preset-picker-box {
+    margin-top: 14px;
+    padding: 14px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--line);
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.preset-workout-list {
+    display: grid;
+    gap: 10px;
+}
+
+.preset-workout-option {
+    text-align: left;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text);
+    border: 1px solid var(--line);
+}
+
+.preset-workout-option:hover {
+    background: rgba(255, 107, 44, 0.14);
+}
+
+.selected-preset-display {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+.workout-meta {
+    display: grid;
+    gap: 6px;
+    margin-top: 14px;
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+.workout-meta p {
+    margin: 0;
+}
+
+.preset-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 8, 14, 0.76);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 1000;
+}
+
+.preset-modal {
+    width: min(720px, 100%);
+    max-height: 85vh;
+    overflow: auto;
+    padding: 24px 24px 88px;
+    border-radius: 24px;
+    background: var(--panel-strong);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    position: relative;
+}
+
+.preset-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.preset-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.preset-filter {
+    display: grid;
+    gap: 8px;
+}
+
+.preset-filter span {
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.modal-close-btn {
+    width: auto;
+    min-width: 100px;
+}
+
+.preset-workout-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.preset-workout-option {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text);
+    border: 1px solid var(--line);
+    padding: 16px 18px;
+    border-radius: 16px;
+}
+
+.preset-workout-option small {
+    color: var(--muted);
+    font-size: 0.82rem;
+}
+
+.preset-workout-option span {
+    font-weight: 700;
+}
+
+.preset-workout-option:hover {
+    border-color: rgba(255, 107, 44, 0.4);
+    background: linear-gradient(135deg, rgba(255, 107, 44, 0.12), rgba(255, 255, 255, 0.04));
+}
+
+.preset-workout-option.is-selected {
+    border-color: rgba(255, 107, 44, 0.65);
+    background: linear-gradient(135deg, rgba(255, 107, 44, 0.2), rgba(255, 255, 255, 0.06));
+    box-shadow: 0 0 0 2px rgba(255, 107, 44, 0.12);
+}
+
+.preset-modal-actions {
+    position: sticky;
+    bottom: -24px;
+    margin-top: 18px;
+    padding: 16px 0 0;
+    border-top: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(23, 29, 39, 0), rgba(23, 29, 39, 0.92) 22%, rgba(23, 29, 39, 1) 100%);
+}
+
+@media (max-width: 760px) {
+    .preset-filter-grid {
+        grid-template-columns: 1fr;
+    }
 }
