@@ -10,3 +10,4 @@ app/users.db
 *.db
 *.db
 /app/data/gif
+/app/data/thumbnails

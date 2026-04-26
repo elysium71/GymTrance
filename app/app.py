@@ -9,6 +9,7 @@ import re #for password validation
 from datetime import timedelta 
 from io import BytesIO
 from urllib.request import urlopen
+from urllib.error import URLError, HTTPError
 from PIL import Image
 
 
@@ -22,8 +23,10 @@ PRESET_FILE = DATA_DIR / "workouts.json"
 WORKOUT_SECTION_FILE = DATA_DIR / "workoutsection.json"
 WORKOUT_HISTORY_FILE = DATA_DIR / "workouthistory.json"
 THUMBNAIL_DIR = DATA_DIR / "thumbnails"
+GIF_DIR = DATA_DIR / "gif"
 
 THUMBNAIL_DIR.mkdir(exist_ok=True)
+GIF_DIR.mkdir(exist_ok=True)
 
 if not PRESET_FILE.exists():
     with open(PRESET_FILE, "w", encoding="utf-8") as f:
@@ -195,11 +198,21 @@ def workout_history_page():
 def load_preset_workouts():
     try:
         with open(PRESET_FILE, "r", encoding="utf-8") as file:
-            return json.load(file)
+            workouts = json.load(file)
     except (json.JSONDecodeError, FileNotFoundError):
         with open(PRESET_FILE, "w", encoding="utf-8") as file:
             json.dump([], file)
         return []
+
+    if not isinstance(workouts, list):
+        return []
+
+    available_gif_ids = {path.stem for path in GIF_DIR.glob("*.gif")}
+    return [
+        workout for workout in workouts
+        if isinstance(workout, dict)
+        and workout.get("exerciseId") in available_gif_ids
+    ]
 
 def load_workout_sections():
     try:
@@ -272,16 +285,24 @@ def index():
 @app.route("/exercise-thumbnail/<exercise_id>")
 def exercise_thumbnail(exercise_id):
     thumbnail_path = THUMBNAIL_DIR / f"{exercise_id}.png"
+    gif_path = GIF_DIR / f"{exercise_id}.gif"
 
     if thumbnail_path.exists():
         return send_file(thumbnail_path, mimetype="image/png")
 
-    workout = find_preset_workout(exercise_id)
-    if not workout or not workout.get("gifUrl"):
-        return ("", 404)
+    gif_bytes = None
+    if gif_path.exists():
+        gif_bytes = gif_path.read_bytes()
+    else:
+        workout = find_preset_workout(exercise_id)
+        if not workout or not workout.get("gifUrl"):
+            return ("", 404)
 
-    with urlopen(workout["gifUrl"]) as response:
-        gif_bytes = response.read()
+        try:
+            with urlopen(workout["gifUrl"]) as response:
+                gif_bytes = response.read()
+        except (HTTPError, URLError):
+            return ("", 404)
 
     with Image.open(BytesIO(gif_bytes)) as gif_image:
         gif_image.seek(0)
