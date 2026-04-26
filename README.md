@@ -34,10 +34,11 @@ This project includes security-related ideas such as:
 
 ## Exercise Data Credit
 
-This project uses preset exercise data based on the free exercise database by Yuhonas.
+This project uses preset exercise data from the ExerciseDB dataset and API documentation:
 
-- Repository: [free-exercise-db](https://github.com/yuhonas/free-exercise-db)
-- Author: [Yuhonas](https://github.com/yuhonas)
+- Source: [ExerciseDB Documentation](https://oss.exercisedb.dev/docs#description/introduction)
+
+I also used Python code in this project to process the exercise media links and convert/download them into local GIF files for the app.
 
 ## Project Status
 
