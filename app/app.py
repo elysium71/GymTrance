@@ -433,7 +433,9 @@ def handle_post():
         "primaryMuscles": primary_muscles,
         "secondaryMuscles": secondary_muscles,
         "owner": current_user,
-        "is_preset": False
+        "is_preset": False,
+        "completed": False,
+        "notes": normalize_text(data.get("notes"))
     }
 
     workouts.append(new_workout)
@@ -492,6 +494,8 @@ def update_workout(workout_id):
         and "sets" not in data
         and "reps" not in data
         and "set_details" not in data
+        and "completed" not in data
+        and "notes" not in data
     ):
         return jsonify({"status": "error", "message": "Nothing to update"}), 400
 
@@ -527,6 +531,11 @@ def update_workout(workout_id):
             if "secondary_muscles" in data:
                 w["secondaryMuscles"] = normalize_string_list(data.get("secondary_muscles"))
 
+            if "notes" in data:
+                if data["notes"] is not None and not isinstance(data["notes"], str):
+                    return jsonify({"status": "error", "message": "notes must be string"}), 400
+                w["notes"] = normalize_text(data.get("notes"))
+
             if "sets" in data:
                 if not isinstance(data["sets"], int) or data["sets"] <= 0:
                     return jsonify({"status": "error", "message": "Sets must be a positive integer"}), 400
@@ -551,6 +560,8 @@ def update_workout(workout_id):
 
                     reps = set_item.get("reps")
                     kg = set_item.get("kg", 0)
+                    set_type = set_item.get("set_type", "working")
+                    done = set_item.get("done", False)
 
                     if not isinstance(reps, int) or reps <= 0:
                         return jsonify({"status": "error", "message": "Each set reps must be a positive integer"}), 400
@@ -558,15 +569,27 @@ def update_workout(workout_id):
                     if not isinstance(kg, (int, float)) or kg < 0:
                         return jsonify({"status": "error", "message": "Each set kg must be zero or positive"}), 400
 
+                    if set_type not in {"warmup", "working", "drop", "failure"}:
+                        return jsonify({"status": "error", "message": "Invalid set type"}), 400
+
+                    if not isinstance(done, bool):
+                        return jsonify({"status": "error", "message": "done must be boolean"}), 400
+
                     cleaned_sets.append({
                         "reps": reps,
-                        "kg": kg
+                        "kg": kg,
+                        "set_type": set_type,
+                        "done": done
                     })
 
                 w["set_details"] = cleaned_sets
                 w["sets"] = len(cleaned_sets)
                 w["reps"] = [item["reps"] for item in cleaned_sets]
 
+            if "completed" in data:
+                if not isinstance(data["completed"], bool):
+                    return jsonify({"status": "error", "message": "completed must be boolean"}), 400
+                w["completed"] = data["completed"]
 
 
             workout_to_update = w

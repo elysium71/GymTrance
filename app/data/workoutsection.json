@@ -1,20 +1,61 @@
 [
     {
         "id": 10000,
-        "preset_id": "0mB6wHO",
-        "workout": "runners stretch",
-        "equipment": "body weight",
+        "preset_id": "03lzqwk",
+        "workout": "assisted hanging knee raise",
+        "equipment": "assisted",
         "bodyParts": [
-            "upper legs"
+            "waist"
         ],
         "primaryMuscles": [
-            "hamstrings"
+            "abs"
         ],
         "secondaryMuscles": [
-            "calves",
-            "quadriceps"
+            "hip flexors"
         ],
         "owner": "admin",
-        "is_preset": false
+        "is_preset": false,
+        "completed": false,
+        "notes": "",
+        "sets": 5,
+        "reps": [
+            12,
+            12,
+            12,
+            12,
+            11
+        ],
+        "set_details": [
+            {
+                "reps": 12,
+                "kg": 3,
+                "set_type": "warmup",
+                "done": true
+            },
+            {
+                "reps": 12,
+                "kg": 3,
+                "set_type": "warmup",
+                "done": true
+            },
+            {
+                "reps": 12,
+                "kg": 3,
+                "set_type": "warmup",
+                "done": true
+            },
+            {
+                "reps": 12,
+                "kg": 4,
+                "set_type": "working",
+                "done": false
+            },
+            {
+                "reps": 11,
+                "kg": 12,
+                "set_type": "failure",
+                "done": false
+            }
+        ]
     }
 ]

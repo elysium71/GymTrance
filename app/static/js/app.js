@@ -1,4 +1,4 @@
-const registerForm = document.querySelector('#register-form');
+﻿const registerForm = document.querySelector('#register-form');
 const loginForm = document.querySelector('#login-form-element');
 const loadDataButton = document.querySelector('#load-data-btn');
 const logoutButton = document.querySelector('#logout-btn');
@@ -10,6 +10,12 @@ const workoutDetailModalOverlay = document.querySelector('#workout-detail-modal-
 const workoutDetailTitle = document.querySelector('#workout-detail-title');
 const workoutDetailBody = document.querySelector('#workout-detail-body');
 const closeWorkoutDetailButton = document.querySelector('#close-workout-detail-btn');
+const setTypeModalOverlay = document.querySelector('#set-type-modal-overlay');
+const closeSetTypeModalButton = document.querySelector('#close-set-type-modal-btn');
+const removeSetActionButton = document.querySelector('#remove-set-action-btn');
+const workoutActionModalOverlay = document.querySelector('#workout-action-modal-overlay');
+const closeWorkoutActionModalButton = document.querySelector('#close-workout-action-modal-btn');
+const deleteWorkoutActionButton = document.querySelector('#delete-workout-action-btn');
 
 const openPresetModalButton = document.querySelector('#open-preset-modal-btn');
 const closePresetModalButton = document.querySelector('#close-preset-modal-btn');
@@ -35,6 +41,15 @@ const addCustomButton = document.querySelector('#add-custom-btn');
 const finishWorkoutButton = document.querySelector('#finish-workout-btn');
 
 const savedToken = localStorage.getItem('access_token');
+let pendingSetContext = null;
+let activeWorkoutActionId = null;
+
+const SET_TYPE_META = {
+    warmup: { code: 'W', label: 'Warm Up' },
+    working: { code: '1', label: 'Working' },
+    drop: { code: 'D', label: 'Drop' },
+    failure: { code: 'F', label: 'Failure' }
+};
 
 function showMessage(message, type) {
     if (!messageBox) {
@@ -74,6 +89,15 @@ function escapeHtml(value) {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;');
+}
+
+function autoResizeTextarea(textarea) {
+    if (!textarea) {
+        return;
+    }
+
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
 }
 
 function updateWorkoutButtons() {
@@ -200,6 +224,10 @@ function renderWorkoutExpandedDetails(workout) {
     const hasGif = Boolean(workout.gifUrl);
     const instructions = Array.isArray(workout.instructions) ? workout.instructions : [];
     const hasInstructions = instructions.length > 0;
+    const equipment = workout.equipment || 'No equipment listed';
+    const bodyParts = formatMuscleList(workout.bodyParts);
+    const primary = formatMuscleList(workout.primaryMuscles);
+    const secondary = formatMuscleList(workout.secondaryMuscles);
 
     if (!hasGif && !hasInstructions) {
         return '';
@@ -221,6 +249,12 @@ function renderWorkoutExpandedDetails(workout) {
                 </div>
             ` : ''}
             <div class="workout-detail-copy">
+                <div class="workout-detail-meta">
+                    <p><strong>Equipment:</strong> ${escapeHtml(equipment)}</p>
+                    <p><strong>Body Parts:</strong> ${escapeHtml(bodyParts)}</p>
+                    <p><strong>Primary:</strong> ${escapeHtml(primary)}</p>
+                    <p><strong>Secondary:</strong> ${escapeHtml(secondary)}</p>
+                </div>
                 <p class="workout-detail-label">Instructions</p>
                 <ol class="workout-detail-steps">
                     ${instructionItems}
@@ -228,6 +262,72 @@ function renderWorkoutExpandedDetails(workout) {
             </div>
         </div>
     `;
+}
+
+function getSetTypeMeta(setType) {
+    return SET_TYPE_META[setType] || SET_TYPE_META.working;
+}
+
+function refreshSetRows(setList) {
+    if (!setList) {
+        return;
+    }
+
+    let workingCount = 0;
+    Array.from(setList.querySelectorAll('.set-row')).forEach(row => {
+        const setType = row.dataset.setType || 'working';
+        const typeButton = row.querySelector('.set-type-trigger');
+        const typeBadge = row.querySelector('.set-type-badge');
+        const doneButton = row.querySelector('.set-done-btn');
+        const meta = getSetTypeMeta(setType);
+
+        let labelText = meta.code;
+        if (setType === 'working') {
+            workingCount += 1;
+            labelText = String(workingCount);
+        }
+
+        if (typeButton) {
+            typeButton.textContent = labelText;
+            typeButton.className = `set-type-trigger is-${setType}`;
+        }
+
+        if (typeBadge) {
+            typeBadge.textContent = labelText;
+            typeBadge.className = `set-type-badge is-${setType}`;
+        }
+
+        if (doneButton) {
+            const isDone = row.dataset.done === 'true';
+            doneButton.classList.toggle('is-done', isDone);
+            doneButton.innerHTML = isDone ? '&#10003;' : '&#9675;';
+        }
+    });
+}
+
+function collectSetDetails(workoutId) {
+    const rows = Array.from(document.querySelectorAll(`.set-list[data-id="${workoutId}"] .set-row`));
+    const setDetails = [];
+
+    for (const row of rows) {
+        const repsInput = row.querySelector(`.reps-field[data-id="${workoutId}"]`);
+        const kgInput = row.querySelector(`.kg-field[data-id="${workoutId}"]`);
+        const reps = Number(repsInput ? repsInput.value : 0);
+        const kg = kgInput && kgInput.value ? Number(kgInput.value) : 0;
+
+        if (!reps || reps <= 0) {
+            return null;
+        }
+
+        setDetails.push({
+            reps,
+            kg,
+            set_type: row.dataset.setType || 'working',
+            done: row.dataset.done === 'true'
+        });
+    }
+
+    return setDetails;
 }
 
 function openWorkoutDetailModal(workout) {
@@ -264,28 +364,39 @@ function renderWorkouts(workouts) {
     const workoutHtml = workouts.map(workout => {
         const setEntries = Array.isArray(workout.set_details) && workout.set_details.length > 0
             ? workout.set_details
-            : [{ reps: '', kg: '' }];
+            : [{ reps: '', kg: '', set_type: 'working', done: false }];
 
-        const setRows = setEntries.map((setEntry, index) => `
-            <div class="set-row">
-                <div class="set-label">Set ${index + 1}</div>
-                <input
-                    type="number"
-                    class="reps-field"
-                    data-id="${workout.id}"
-                    placeholder="Reps"
-                    min="1"
-                    value="${setEntry.reps || ''}">
-                <input
-                    type="number"
-                    class="kg-field"
-                    data-id="${workout.id}"
-                    placeholder="KG"
-                    min="0"
-                    value="${setEntry.kg || ''}">
-                <button type="button" class="remove-set-btn" data-id="${workout.id}">Delete Set</button>
-            </div>
-        `).join('');
+        const setRows = setEntries.map((setEntry, index) => {
+            const setType = setEntry.set_type || 'working';
+            const setTypeMeta = getSetTypeMeta(setType);
+            const previousValue = setEntry.reps
+                ? `${setEntry.kg || 0} kg x ${setEntry.reps}`
+                : '-';
+
+            return `
+                <div class="set-row set-row-modern" data-set-type="${setType}" data-done="${setEntry.done ? 'true' : 'false'}">
+                    <div class="set-cell set-cell-label">
+                        <button type="button" class="set-type-trigger is-${setType}" data-id="${workout.id}">${setType === 'working' ? index + 1 : setTypeMeta.code}</button>
+                    </div>
+                    <div class="set-cell set-cell-previous">${escapeHtml(previousValue)}</div>
+                    <input
+                        type="number"
+                        class="kg-field"
+                        data-id="${workout.id}"
+                        placeholder="KG"
+                        min="0"
+                        value="${setEntry.kg || ''}">
+                    <input
+                        type="number"
+                        class="reps-field"
+                        data-id="${workout.id}"
+                        placeholder="Reps"
+                        min="1"
+                        value="${setEntry.reps || ''}">
+                    <button type="button" class="set-done-btn${setEntry.done ? ' is-done' : ''}" data-id="${workout.id}">${setEntry.done ? '&#10003;' : '&#9675;'}</button>
+                </div>
+            `;
+        }).join('');
 
         const thumbnailHtml = workout.exerciseId
             ? `
@@ -298,19 +409,23 @@ function renderWorkouts(workouts) {
                 </div>
             `
             : '';
+        const completedClass = workout.completed ? ' is-completed' : '';
 
         return `
-            <article class="workout-card">
+            <article class="workout-card workout-card-sheet${completedClass}">
                 <div class="current-workout-layout">
                     ${thumbnailHtml}
                     <div class="current-workout-main">
                         <div class="workout-card-header">
-                            <h3 class="workout-title">${workout.workout}</h3>
-                            <span class="category-tag">${workout.equipment || 'Custom'}</span>
+                            <div class="workout-heading-block">
+                                <h3 class="workout-title">${workout.workout}</h3>
+                                <textarea class="workout-notes-input" data-id="${workout.id}" placeholder="Add notes here...">${escapeHtml(workout.notes || '')}</textarea>
+                            </div>
+                            <div class="workout-card-tools">
+                                <span class="category-tag">${workout.equipment || 'Custom'}</span>
+                                <button type="button" class="workout-menu-btn" data-id="${workout.id}" aria-label="Workout options">&#8942;</button>
+                            </div>
                         </div>
-
-                        ${renderWorkoutDetails(workout)}
-
                         ${(workout.gifUrl || (Array.isArray(workout.instructions) && workout.instructions.length > 0)) ? `
                             <button
                                 type="button"
@@ -319,60 +434,92 @@ function renderWorkouts(workouts) {
                                 Show Details
                             </button>
                         ` : ''}
-
-                        <div class="strength-editor" data-id="${workout.id}">
-                            <div class="set-list" data-id="${workout.id}">
-                                ${setRows}
-                            </div>
-                            <div class="strength-actions">
-                                <button type="button" class="add-set-btn" data-id="${workout.id}">Add Set</button>
-                                <button type="button" class="save-strength-btn" data-id="${workout.id}">Save</button>
-                            </div>
-                        </div>
                     </div>
                 </div>
-
-                <button type="button" class="delete-workout-btn" data-id="${workout.id}">Delete</button>
+                <div class="strength-editor" data-id="${workout.id}">
+                    <div class="set-table-head">
+                        <span>Set</span>
+                        <span>Previous</span>
+                        <span>KG</span>
+                        <span>Reps</span>
+                        <span>Action</span>
+                    </div>
+                    <div class="set-list" data-id="${workout.id}">
+                        ${setRows}
+                    </div>
+                    <div class="strength-actions">
+                        <button type="button" class="add-set-btn" data-id="${workout.id}">Add Set</button>
+                    </div>
+                </div>
             </article>
         `;
     }).join('');
 
     workoutList.innerHTML = workoutHtml;
 
-    document.querySelectorAll('.delete-workout-btn').forEach(button => {
-        button.addEventListener('click', function () {
-            deleteWorkout(button.dataset.id);
-        });
-    });
-
     document.querySelectorAll('.add-set-btn').forEach(button => {
         button.addEventListener('click', function () {
-            addSetRow(button.dataset.id);
+            addSetRow(button.dataset.id, 'working');
         });
     });
 
-    document.querySelectorAll('.remove-set-btn').forEach(button => {
+    document.querySelectorAll('.set-type-trigger').forEach(button => {
         button.addEventListener('click', function () {
-            removeSetRow(button);
+            const row = button.closest('.set-row');
+            if (!row) {
+                return;
+            }
+            openSetTypeModal(button.dataset.id, row);
         });
     });
 
-    document.querySelectorAll('.save-strength-btn').forEach(button => {
+    document.querySelectorAll('.set-done-btn').forEach(button => {
         button.addEventListener('click', function () {
             const workoutId = button.dataset.id;
-            const repInputs = document.querySelectorAll(`.reps-field[data-id="${workoutId}"]`);
+            const row = button.closest('.set-row');
+            if (!row) {
+                return;
+            }
 
-            const setDetails = Array.from(repInputs).map(repsInput => {
-                const row = repsInput.closest('.set-row');
-                const kgInput = row.querySelector(`.kg-field[data-id="${workoutId}"]`);
+            const repsInput = row.querySelector(`.reps-field[data-id="${workoutId}"]`);
+            if (!repsInput || Number(repsInput.value) <= 0) {
+                showMessage('Enter reps before ticking the set done.', 'error');
+                return;
+            }
 
-                return {
-                    reps: Number(repsInput.value),
-                    kg: kgInput.value ? Number(kgInput.value) : 0
-                };
-            }).filter(setItem => setItem.reps > 0);
+            row.dataset.done = row.dataset.done === 'true' ? 'false' : 'true';
+            refreshSetRows(row.closest('.set-list'));
 
-            saveStrengthWorkout(workoutId, setDetails);
+            const setDetails = collectSetDetails(workoutId);
+            if (!setDetails) {
+                showMessage('Enter reps for all sets before ticking done.', 'error');
+                row.dataset.done = row.dataset.done === 'true' ? 'false' : 'true';
+                refreshSetRows(row.closest('.set-list'));
+                return;
+            }
+
+            const allDone = setDetails.length > 0 && setDetails.every(setItem => setItem.done);
+            saveStrengthWorkout(workoutId, setDetails, allDone);
+        });
+    });
+
+    document.querySelectorAll('.workout-menu-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            openWorkoutActionModal(button.dataset.id);
+        });
+    });
+
+    document.querySelectorAll('.workout-notes-input').forEach(input => {
+        autoResizeTextarea(input);
+
+        input.addEventListener('input', function () {
+            autoResizeTextarea(input);
+        });
+
+        input.addEventListener('change', function () {
+            const workoutId = input.dataset.id;
+            const setDetails = collectSetDetails(workoutId) || [];
+            saveStrengthWorkout(workoutId, setDetails, false, input.value);
         });
     });
 
@@ -385,6 +532,8 @@ function renderWorkouts(workouts) {
             openWorkoutDetailModal(selectedWorkout);
         });
     });
+
+    document.querySelectorAll('.set-list').forEach(refreshSetRows);
 }
 
 function loadWorkouts() {
@@ -477,7 +626,7 @@ function finishWorkout() {
     });
 }
 
-function saveStrengthWorkout(workoutId, setDetails) {
+function saveStrengthWorkout(workoutId, setDetails, completed = false, notesOverride = null) {
     const token = localStorage.getItem('access_token');
 
     if (!token) {
@@ -485,9 +634,20 @@ function saveStrengthWorkout(workoutId, setDetails) {
         return;
     }
 
-    if (!Array.isArray(setDetails) || setDetails.length === 0) {
-        showMessage('Please add at least one set with reps.', 'error');
+    if (!Array.isArray(setDetails)) {
+        showMessage('Set details are invalid.', 'error');
         return;
+    }
+
+    const notesInput = document.querySelector(`.workout-notes-input[data-id="${workoutId}"]`);
+    const body = {
+        completed,
+        notes: notesOverride !== null ? notesOverride : (notesInput ? notesInput.value : '')
+    };
+    if (setDetails.length > 0) {
+        body.sets = setDetails.length;
+        body.reps = setDetails.map(setItem => setItem.reps);
+        body.set_details = setDetails;
     }
 
     fetch(`http://127.0.0.1:5000/data/${workoutId}`, {
@@ -496,16 +656,12 @@ function saveStrengthWorkout(workoutId, setDetails) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-            sets: setDetails.length,
-            reps: setDetails.map(setItem => setItem.reps),
-            set_details: setDetails
-        })
+        body: JSON.stringify(body)
     })
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            showMessage('Workout updated successfully!', 'success');
+            showMessage(completed ? 'Workout marked as done!' : 'Workout updated successfully!', 'success');
             loadWorkouts();
         } else {
             showMessage(data.message || 'Failed to update workout.', 'error');
@@ -517,43 +673,93 @@ function saveStrengthWorkout(workoutId, setDetails) {
     });
 }
 
-function addSetRow(workoutId) {
+function openSetTypeModal(workoutId, row = null) {
+    if (!setTypeModalOverlay) {
+        return;
+    }
+
+    pendingSetContext = { workoutId, row };
+    if (removeSetActionButton) {
+        removeSetActionButton.hidden = !row;
+    }
+    setTypeModalOverlay.style.display = 'flex';
+}
+
+function closeSetTypeModal() {
+    if (!setTypeModalOverlay) {
+        return;
+    }
+
+    pendingSetContext = null;
+    setTypeModalOverlay.style.display = 'none';
+}
+
+function addSetRow(workoutId, setType = 'working') {
     const setList = document.querySelector(`.set-list[data-id="${workoutId}"]`);
     if (!setList) {
         return;
     }
 
     const nextSetNumber = setList.querySelectorAll('.set-row').length + 1;
+    const setTypeMeta = getSetTypeMeta(setType);
 
     const row = document.createElement('div');
-    row.className = 'set-row';
+    row.className = 'set-row set-row-modern';
+    row.dataset.setType = setType;
+    row.dataset.done = 'false';
     row.innerHTML = `
-        <div class="set-label">Set ${nextSetNumber}</div>
-        <input
-            type="number"
-            class="reps-field"
-            data-id="${workoutId}"
-            placeholder="Reps"
-            min="1">
+        <div class="set-cell set-cell-label">
+            <button type="button" class="set-type-trigger is-${setType}" data-id="${workoutId}">${setType === 'working' ? nextSetNumber : setTypeMeta.code}</button>
+        </div>
+        <div class="set-cell set-cell-previous">-</div>
         <input
             type="number"
             class="kg-field"
             data-id="${workoutId}"
             placeholder="KG"
             min="0">
-        <button type="button" class="remove-set-btn" data-id="${workoutId}">Delete Set</button>
+        <input
+            type="number"
+            class="reps-field"
+            data-id="${workoutId}"
+            placeholder="Reps"
+            min="1">
+        <button type="button" class="set-done-btn" data-id="${workoutId}">&#9675;</button>
     `;
 
     setList.appendChild(row);
 
-    row.querySelector('.remove-set-btn').addEventListener('click', function () {
-        removeSetRow(this);
+    row.querySelector('.set-type-trigger').addEventListener('click', function () {
+        openSetTypeModal(workoutId, row);
     });
+
+    row.querySelector('.set-done-btn').addEventListener('click', function () {
+        const repsInput = row.querySelector(`.reps-field[data-id="${workoutId}"]`);
+        if (!repsInput || Number(repsInput.value) <= 0) {
+            showMessage('Enter reps before ticking the set done.', 'error');
+            return;
+        }
+
+        row.dataset.done = row.dataset.done === 'true' ? 'false' : 'true';
+        refreshSetRows(setList);
+
+        const setDetails = collectSetDetails(workoutId);
+        if (!setDetails) {
+            showMessage('Enter reps for all sets before ticking done.', 'error');
+            row.dataset.done = row.dataset.done === 'true' ? 'false' : 'true';
+            refreshSetRows(setList);
+            return;
+        }
+
+        const allDone = setDetails.length > 0 && setDetails.every(setItem => setItem.done);
+        saveStrengthWorkout(workoutId, setDetails, allDone);
+    });
+
+    refreshSetRows(setList);
 }
 
-function removeSetRow(button) {
-    const row = button.closest('.set-row');
-    const setList = button.closest('.set-list');
+function removeSetRow(row) {
+    const setList = row ? row.closest('.set-list') : null;
 
     if (!row || !setList) {
         return;
@@ -568,12 +774,25 @@ function removeSetRow(button) {
 
     row.remove();
 
-    setList.querySelectorAll('.set-row').forEach((setRow, index) => {
-        const label = setRow.querySelector('.set-label');
-        if (label) {
-            label.textContent = `Set ${index + 1}`;
-        }
-    });
+    refreshSetRows(setList);
+}
+
+function openWorkoutActionModal(workoutId) {
+    if (!workoutActionModalOverlay) {
+        return;
+    }
+
+    activeWorkoutActionId = workoutId;
+    workoutActionModalOverlay.style.display = 'flex';
+}
+
+function closeWorkoutActionModal() {
+    if (!workoutActionModalOverlay) {
+        return;
+    }
+
+    activeWorkoutActionId = null;
+    workoutActionModalOverlay.style.display = 'none';
 }
 
 function renderWorkoutHistory(historyItems) {
@@ -802,6 +1021,91 @@ if (workoutDetailModalOverlay) {
     });
 }
 
+if (closeSetTypeModalButton) {
+    closeSetTypeModalButton.addEventListener('click', function () {
+        closeSetTypeModal();
+    });
+}
+
+if (setTypeModalOverlay) {
+    setTypeModalOverlay.addEventListener('click', function (event) {
+        if (event.target === setTypeModalOverlay) {
+            closeSetTypeModal();
+        }
+    });
+}
+
+document.querySelectorAll('.sheet-option-btn[data-set-type]').forEach(button => {
+    button.addEventListener('click', function () {
+        if (!pendingSetContext || !pendingSetContext.row) {
+            return;
+        }
+
+        const { row } = pendingSetContext;
+        const selectedType = button.dataset.setType || 'working';
+        const setList = row.closest('.set-list');
+
+        if (!setList) {
+            closeSetTypeModal();
+            return;
+        }
+
+        if (selectedType === 'warmup') {
+            const rows = Array.from(setList.querySelectorAll('.set-row'));
+            const selectedIndex = rows.indexOf(row);
+            rows.forEach((item, index) => {
+                if (index <= selectedIndex) {
+                    item.dataset.setType = 'warmup';
+                }
+            });
+        } else {
+            row.dataset.setType = selectedType;
+        }
+
+        row.dataset.done = row.dataset.done || 'false';
+        refreshSetRows(setList);
+        closeSetTypeModal();
+    });
+});
+
+if (removeSetActionButton) {
+    removeSetActionButton.addEventListener('click', function () {
+        if (!pendingSetContext || !pendingSetContext.row) {
+            return;
+        }
+
+        const row = pendingSetContext.row;
+        closeSetTypeModal();
+        removeSetRow(row);
+    });
+}
+
+if (closeWorkoutActionModalButton) {
+    closeWorkoutActionModalButton.addEventListener('click', function () {
+        closeWorkoutActionModal();
+    });
+}
+
+if (workoutActionModalOverlay) {
+    workoutActionModalOverlay.addEventListener('click', function (event) {
+        if (event.target === workoutActionModalOverlay) {
+            closeWorkoutActionModal();
+        }
+    });
+}
+
+if (deleteWorkoutActionButton) {
+    deleteWorkoutActionButton.addEventListener('click', function () {
+        if (!activeWorkoutActionId) {
+            return;
+        }
+
+        const workoutId = activeWorkoutActionId;
+        closeWorkoutActionModal();
+        deleteWorkout(workoutId);
+    });
+}
+
 if (customWorkoutInput) {
     customWorkoutInput.addEventListener('input', updateWorkoutButtons);
 }
@@ -871,3 +1175,5 @@ if (window.location.pathname === '/workouts') {
         window.location.href = '/';
     }
 }
+
+
