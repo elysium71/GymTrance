@@ -1,6 +1,54 @@
 [
     {
         "id": 10000,
+        "preset_id": "01qpYSe",
+        "workout": "upward facing dog",
+        "equipment": "body weight",
+        "bodyParts": [
+            "back"
+        ],
+        "primaryMuscles": [
+            "spine"
+        ],
+        "secondaryMuscles": [
+            "shoulders",
+            "chest"
+        ],
+        "owner": "admin",
+        "is_preset": false,
+        "completed": false,
+        "notes": "Target reps: 8-12",
+        "sets": 3,
+        "reps": [
+            8,
+            8,
+            8
+        ],
+        "set_details": [
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            },
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            },
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            }
+        ],
+        "routine_rep_min": 8,
+        "routine_rep_max": 12
+    },
+    {
+        "id": 10001,
         "preset_id": "03lzqwk",
         "workout": "assisted hanging knee raise",
         "equipment": "assisted",
@@ -16,46 +64,276 @@
         "owner": "admin",
         "is_preset": false,
         "completed": false,
-        "notes": "",
-        "sets": 5,
+        "notes": "Target reps: 8-12",
+        "sets": 3,
         "reps": [
-            12,
-            12,
-            12,
-            12,
-            11
+            8,
+            8,
+            8
         ],
         "set_details": [
             {
-                "reps": 12,
-                "kg": 3,
-                "set_type": "warmup",
-                "done": true
-            },
-            {
-                "reps": 12,
-                "kg": 3,
-                "set_type": "warmup",
-                "done": true
-            },
-            {
-                "reps": 12,
-                "kg": 3,
-                "set_type": "warmup",
-                "done": true
-            },
-            {
-                "reps": 12,
-                "kg": 4,
+                "reps": 8,
+                "kg": 0,
                 "set_type": "working",
                 "done": false
             },
             {
-                "reps": 11,
-                "kg": 12,
-                "set_type": "failure",
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            },
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
                 "done": false
             }
-        ]
+        ],
+        "routine_rep_min": 8,
+        "routine_rep_max": 12
+    },
+    {
+        "id": 10002,
+        "preset_id": "05Cf2v8",
+        "workout": "impossible dips",
+        "equipment": "body weight",
+        "bodyParts": [
+            "upper arms"
+        ],
+        "primaryMuscles": [
+            "triceps"
+        ],
+        "secondaryMuscles": [
+            "chest",
+            "shoulders"
+        ],
+        "owner": "admin",
+        "is_preset": false,
+        "completed": false,
+        "notes": "Target reps: 8-12",
+        "sets": 3,
+        "reps": [
+            8,
+            8,
+            8
+        ],
+        "set_details": [
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            },
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            },
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            }
+        ],
+        "routine_rep_min": 8,
+        "routine_rep_max": 12
+    },
+    {
+        "id": 10003,
+        "preset_id": "0CXGHya",
+        "workout": "cable cross-over variation",
+        "equipment": "cable",
+        "bodyParts": [
+            "chest"
+        ],
+        "primaryMuscles": [
+            "pectorals"
+        ],
+        "secondaryMuscles": [
+            "deltoids",
+            "triceps"
+        ],
+        "owner": "admin",
+        "is_preset": false,
+        "completed": false,
+        "notes": "Target reps: 8-12",
+        "sets": 3,
+        "reps": [
+            8,
+            8,
+            8
+        ],
+        "set_details": [
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            },
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            },
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            }
+        ],
+        "routine_rep_min": 8,
+        "routine_rep_max": 12
+    },
+    {
+        "id": 10004,
+        "preset_id": "0dCyly0",
+        "workout": "barbell seated bradford rocky press",
+        "equipment": "barbell",
+        "bodyParts": [
+            "shoulders"
+        ],
+        "primaryMuscles": [
+            "delts"
+        ],
+        "secondaryMuscles": [
+            "triceps",
+            "upper back"
+        ],
+        "owner": "admin",
+        "is_preset": false,
+        "completed": false,
+        "notes": "Target reps: 8-12",
+        "sets": 3,
+        "reps": [
+            8,
+            8,
+            8
+        ],
+        "set_details": [
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            },
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            },
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            }
+        ],
+        "routine_rep_min": 8,
+        "routine_rep_max": 12
+    },
+    {
+        "id": 10005,
+        "preset_id": "0lQnxMZ",
+        "workout": "weighted sissy squat",
+        "equipment": "weighted",
+        "bodyParts": [
+            "upper legs"
+        ],
+        "primaryMuscles": [
+            "quads"
+        ],
+        "secondaryMuscles": [
+            "glutes",
+            "hamstrings",
+            "calves"
+        ],
+        "owner": "admin",
+        "is_preset": false,
+        "completed": false,
+        "notes": "Target reps: 8-12",
+        "sets": 3,
+        "reps": [
+            8,
+            8,
+            8
+        ],
+        "set_details": [
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            },
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            },
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            }
+        ],
+        "routine_rep_min": 8,
+        "routine_rep_max": 12
+    },
+    {
+        "id": 10006,
+        "preset_id": "11wrviz",
+        "workout": "isometric wipers",
+        "equipment": "body weight",
+        "bodyParts": [
+            "chest"
+        ],
+        "primaryMuscles": [
+            "pectorals"
+        ],
+        "secondaryMuscles": [
+            "shoulders",
+            "triceps",
+            "core"
+        ],
+        "owner": "admin",
+        "is_preset": false,
+        "completed": false,
+        "notes": "Target reps: 8-12",
+        "sets": 3,
+        "reps": [
+            8,
+            8,
+            8
+        ],
+        "set_details": [
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            },
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            },
+            {
+                "reps": 8,
+                "kg": 0,
+                "set_type": "working",
+                "done": false
+            }
+        ],
+        "routine_rep_min": 8,
+        "routine_rep_max": 12
     }
 ]

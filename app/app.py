@@ -22,6 +22,7 @@ DATA_DIR.mkdir(exist_ok=True)
 PRESET_FILE = DATA_DIR / "workouts.json"
 WORKOUT_SECTION_FILE = DATA_DIR / "workoutsection.json"
 WORKOUT_HISTORY_FILE = DATA_DIR / "workouthistory.json"
+ROUTINE_FILE = DATA_DIR / "routines.json"
 THUMBNAIL_DIR = DATA_DIR / "thumbnails"
 GIF_DIR = DATA_DIR / "gif"
 
@@ -38,6 +39,10 @@ if not WORKOUT_SECTION_FILE.exists():
 
 if not WORKOUT_HISTORY_FILE.exists():
     with open(WORKOUT_HISTORY_FILE, "w", encoding="utf-8") as f:
+        f.write("[]")
+
+if not ROUTINE_FILE.exists():
+    with open(ROUTINE_FILE, "w", encoding="utf-8") as f:
         f.write("[]")
 
 
@@ -164,7 +169,8 @@ def login():
 
 @app.route("/workouts")
 def workouts_home():
-    return render_template("workouts_home.html")
+    preset_workouts = load_preset_workouts()
+    return render_template("workouts_home.html", preset_workouts=preset_workouts)
 
 @app.route("/workouts/current")
 def current_workout_page():
@@ -241,6 +247,23 @@ def save_workout_history(history):
         json.dump(history, file, indent=4)
 
 
+def load_routines():
+    try:
+        with open(ROUTINE_FILE, "r", encoding="utf-8") as file:
+            routines = json.load(file)
+    except (json.JSONDecodeError, FileNotFoundError):
+        with open(ROUTINE_FILE, "w", encoding="utf-8") as file:
+            json.dump([], file)
+        return []
+
+    return routines if isinstance(routines, list) else []
+
+
+def save_routines(routines):
+    with open(ROUTINE_FILE, "w", encoding="utf-8") as file:
+        json.dump(routines, file, indent=4)
+
+
 def normalize_text(value):
     if value is None:
         return ""
@@ -304,6 +327,65 @@ def enrich_workout_record(workout):
     return enriched_workout
 
 
+def next_numeric_id(items, floor=9999):
+    ids = [
+        item.get("id", 0)
+        for item in items
+        if isinstance(item, dict)
+        and isinstance(item.get("id"), int)
+        and item.get("id") >= floor
+    ]
+    return max(ids, default=floor) + 1
+
+
+def build_workout_from_routine_exercise(exercise, owner, workout_id):
+    preset_id = str(exercise.get("preset_id") or "")
+    preset_workout = find_preset_workout(preset_id)
+
+    if not preset_workout:
+        return None
+
+    sets = exercise.get("sets", 1)
+    rep_min = exercise.get("rep_min", 1)
+    rep_max = exercise.get("rep_max", rep_min)
+
+    if not isinstance(sets, int) or sets <= 0:
+        sets = 1
+    if not isinstance(rep_min, int) or rep_min <= 0:
+        rep_min = 1
+    if not isinstance(rep_max, int) or rep_max < rep_min:
+        rep_max = rep_min
+
+    set_details = [
+        {
+            "reps": rep_min,
+            "kg": 0,
+            "set_type": "working",
+            "done": False
+        }
+        for _ in range(sets)
+    ]
+
+    return {
+        "id": workout_id,
+        "preset_id": preset_id,
+        "workout": preset_workout.get("name", "Preset workout"),
+        "equipment": (preset_workout.get("equipments") or [""])[0],
+        "bodyParts": preset_workout.get("bodyParts", []),
+        "primaryMuscles": preset_workout.get("targetMuscles", []),
+        "secondaryMuscles": preset_workout.get("secondaryMuscles", []),
+        "owner": owner,
+        "is_preset": False,
+        "completed": False,
+        "notes": "",
+        "sets": sets,
+        "reps": [item["reps"] for item in set_details],
+        "set_details": set_details,
+        "routine_rep_min": rep_min,
+        "routine_rep_max": rep_max
+    }
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -360,6 +442,125 @@ def get_history_data():
         "message": "Workout history retrieved",
         "data": user_history
     }), 200
+
+
+@app.route("/routines", methods=["GET"])
+@jwt_required()
+def get_routines():
+    current_user = get_jwt_identity()
+    routines = load_routines()
+    user_routines = [routine for routine in routines if routine.get("owner") == current_user]
+
+    return jsonify({
+        "status": "success",
+        "message": "Routines retrieved",
+        "data": user_routines
+    }), 200
+
+
+@app.route("/routines", methods=["POST"])
+@jwt_required()
+def create_routine():
+    data = request.get_json(silent=True)
+
+    if not data:
+        return jsonify({"status": "error", "message": "No data provided"}), 400
+
+    name = normalize_text(data.get("name"))
+    exercises = data.get("exercises")
+
+    if not name:
+        return jsonify({"status": "error", "message": "Routine name is required"}), 400
+
+    if not isinstance(exercises, list) or not exercises:
+        return jsonify({"status": "error", "message": "Add at least one exercise"}), 400
+
+    cleaned_exercises = []
+    for exercise in exercises:
+        if not isinstance(exercise, dict):
+            return jsonify({"status": "error", "message": "Each exercise must be an object"}), 400
+
+        preset_id = normalize_text(exercise.get("preset_id"))
+        if not preset_id or not find_preset_workout(preset_id):
+            return jsonify({"status": "error", "message": "Choose a valid preset exercise"}), 400
+
+        sets = exercise.get("sets")
+        rep_min = exercise.get("rep_min")
+        rep_max = exercise.get("rep_max")
+
+        if not isinstance(sets, int) or sets <= 0:
+            return jsonify({"status": "error", "message": "Sets must be a positive number"}), 400
+        if not isinstance(rep_min, int) or rep_min <= 0:
+            return jsonify({"status": "error", "message": "Rep min must be a positive number"}), 400
+        if not isinstance(rep_max, int) or rep_max < rep_min:
+            return jsonify({"status": "error", "message": "Rep max must be at least rep min"}), 400
+
+        preset_workout = find_preset_workout(preset_id)
+        cleaned_exercises.append({
+            "preset_id": preset_id,
+            "name": preset_workout.get("name", "Preset workout"),
+            "sets": sets,
+            "rep_min": rep_min,
+            "rep_max": rep_max
+        })
+
+    current_user = get_jwt_identity()
+    routines = load_routines()
+    routine = {
+        "id": next_numeric_id(routines),
+        "owner": current_user,
+        "name": name,
+        "exercises": cleaned_exercises
+    }
+
+    routines.append(routine)
+    save_routines(routines)
+
+    return jsonify({
+        "status": "success",
+        "message": "Routine saved",
+        "data": routine
+    }), 201
+
+
+@app.route("/routines/<int:routine_id>/start", methods=["POST"])
+@jwt_required()
+def start_routine(routine_id):
+    current_user = get_jwt_identity()
+    routines = load_routines()
+    routine = next(
+        (
+            item for item in routines
+            if item.get("id") == routine_id and item.get("owner") == current_user
+        ),
+        None
+    )
+
+    if not routine:
+        return jsonify({"status": "error", "message": "Routine not found"}), 404
+
+    workouts = load_workout_sections()
+    remaining_workouts = [w for w in workouts if w.get("owner") != current_user]
+    next_id = next_numeric_id(remaining_workouts)
+    imported_workouts = []
+
+    for exercise in routine.get("exercises", []):
+        workout = build_workout_from_routine_exercise(exercise, current_user, next_id)
+        if workout:
+            imported_workouts.append(workout)
+            next_id += 1
+
+    if not imported_workouts:
+        return jsonify({"status": "error", "message": "Routine has no valid exercises"}), 400
+
+    remaining_workouts.extend(imported_workouts)
+    save_workout_sections(remaining_workouts)
+
+    return jsonify({
+        "status": "success",
+        "message": "Routine started",
+        "data": imported_workouts
+    }), 201
 
 # GET all workouts
 

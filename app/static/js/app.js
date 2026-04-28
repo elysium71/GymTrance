@@ -39,10 +39,24 @@ const customSecondaryMusclesInput = document.querySelector('#custom-secondary-mu
 const addPresetButton = document.querySelector('#add-preset-btn');
 const addCustomButton = document.querySelector('#add-custom-btn');
 const finishWorkoutButton = document.querySelector('#finish-workout-btn');
+const openStartWorkoutModalButton = document.querySelector('#open-start-workout-modal-btn');
+const startWorkoutModalOverlay = document.querySelector('#start-workout-modal-overlay');
+const closeStartWorkoutModalButton = document.querySelector('#close-start-workout-modal-btn');
+const newRoutineChoiceButton = document.querySelector('#new-routine-choice-btn');
+const routineBuilderModalOverlay = document.querySelector('#routine-builder-modal-overlay');
+const closeRoutineBuilderModalButton = document.querySelector('#close-routine-builder-modal-btn');
+const routineBuilderForm = document.querySelector('#routine-builder-form');
+const routineNameInput = document.querySelector('#routine-name-input');
+const routinePresetSearchInput = document.querySelector('#routine-preset-search-input');
+const routinePresetList = document.querySelector('#routine-preset-list');
+const routineExerciseList = document.querySelector('#routine-exercise-list');
+const routineList = document.querySelector('#routine-list');
+const routineFilterInput = document.querySelector('#routine-filter-input');
 
 const savedToken = localStorage.getItem('access_token');
 let pendingSetContext = null;
 let activeWorkoutActionId = null;
+let savedRoutines = [];
 
 const SET_TYPE_META = {
     warmup: { code: 'W', label: 'Warm Up' },
@@ -89,6 +103,17 @@ function escapeHtml(value) {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;');
+}
+
+function formatTitleCase(value) {
+    return String(value ?? '')
+        .trim()
+        .split(/\s+/)
+        .map(word => word
+            .split('-')
+            .map(part => part ? `${part.charAt(0).toUpperCase()}${part.slice(1)}` : '')
+            .join('-'))
+        .join(' ');
 }
 
 function autoResizeTextarea(textarea) {
@@ -224,17 +249,16 @@ function renderWorkoutExpandedDetails(workout) {
     const hasGif = Boolean(workout.gifUrl);
     const instructions = Array.isArray(workout.instructions) ? workout.instructions : [];
     const hasInstructions = instructions.length > 0;
-    const equipment = workout.equipment || 'No equipment listed';
-    const bodyParts = formatMuscleList(workout.bodyParts);
-    const primary = formatMuscleList(workout.primaryMuscles);
-    const secondary = formatMuscleList(workout.secondaryMuscles);
 
     if (!hasGif && !hasInstructions) {
         return '';
     }
 
     const instructionItems = hasInstructions
-        ? instructions.map(step => `<li>${escapeHtml(step)}</li>`).join('')
+        ? instructions.map(step => {
+            const cleanStep = String(step).replace(/^Step:?\s*\d+\s*/i, '').trim();
+            return `<li>${escapeHtml(cleanStep || step)}</li>`;
+        }).join('')
         : '<li>No instructions available.</li>';
 
     return `
@@ -243,19 +267,16 @@ function renderWorkoutExpandedDetails(workout) {
                 <div class="workout-detail-media">
                     <img
                         src="${escapeHtml(workout.gifUrl)}"
-                        alt="${escapeHtml(workout.workout)} demonstration"
+                        data-gif-src="${escapeHtml(workout.gifUrl)}"
+                        data-still-src="/exercise-thumbnail/${encodeURIComponent(workout.exerciseId || '')}"
+                        alt="${escapeHtml(formatTitleCase(workout.workout))} demonstration"
                         class="workout-detail-gif"
                         loading="lazy">
+                    <button type="button" class="workout-detail-pause" aria-label="Pause demonstration" data-paused="false">II</button>
                 </div>
             ` : ''}
             <div class="workout-detail-copy">
-                <div class="workout-detail-meta">
-                    <p><strong>Equipment:</strong> ${escapeHtml(equipment)}</p>
-                    <p><strong>Body Parts:</strong> ${escapeHtml(bodyParts)}</p>
-                    <p><strong>Primary:</strong> ${escapeHtml(primary)}</p>
-                    <p><strong>Secondary:</strong> ${escapeHtml(secondary)}</p>
-                </div>
-                <p class="workout-detail-label">Instructions</p>
+                <h2>${escapeHtml(formatTitleCase(workout.workout || 'Workout Detail'))}</h2>
                 <ol class="workout-detail-steps">
                     ${instructionItems}
                 </ol>
@@ -335,8 +356,21 @@ function openWorkoutDetailModal(workout) {
         return;
     }
 
-    workoutDetailTitle.textContent = workout.workout || 'Workout Detail';
+    workoutDetailTitle.textContent = formatTitleCase(workout.workout || 'Workout Detail');
     workoutDetailBody.innerHTML = renderWorkoutExpandedDetails(workout);
+    const pauseButton = workoutDetailBody.querySelector('.workout-detail-pause');
+    const detailImage = workoutDetailBody.querySelector('.workout-detail-gif');
+
+    if (pauseButton && detailImage) {
+        pauseButton.addEventListener('click', function () {
+            const isPaused = pauseButton.dataset.paused === 'true';
+            pauseButton.dataset.paused = isPaused ? 'false' : 'true';
+            pauseButton.textContent = isPaused ? 'II' : '';
+            pauseButton.classList.toggle('is-paused', !isPaused);
+            pauseButton.setAttribute('aria-label', isPaused ? 'Pause demonstration' : 'Play demonstration');
+            detailImage.src = isPaused ? detailImage.dataset.gifSrc : detailImage.dataset.stillSrc;
+        });
+    }
     workoutDetailModalOverlay.style.display = 'flex';
 }
 
@@ -372,6 +406,14 @@ function renderWorkouts(workouts) {
             const previousValue = setEntry.reps
                 ? `${setEntry.kg || 0} kg x ${setEntry.reps}`
                 : '-';
+            const hasRepRange = Number(workout.routine_rep_min) > 0 && Number(workout.routine_rep_max) > 0;
+            const repRangeText = hasRepRange
+                ? (
+                    Number(workout.routine_rep_min) === Number(workout.routine_rep_max)
+                        ? `${workout.routine_rep_min}`
+                        : `${workout.routine_rep_min}-${workout.routine_rep_max}`
+                )
+                : '';
 
             return `
                 <div class="set-row set-row-modern" data-set-type="${setType}" data-done="${setEntry.done ? 'true' : 'false'}">
@@ -386,13 +428,16 @@ function renderWorkouts(workouts) {
                         placeholder="KG"
                         min="0"
                         value="${setEntry.kg || ''}">
-                    <input
-                        type="number"
-                        class="reps-field"
-                        data-id="${workout.id}"
-                        placeholder="Reps"
-                        min="1"
-                        value="${setEntry.reps || ''}">
+                    <label class="rep-entry-field">
+                        ${hasRepRange ? `<span class="rep-range-hint">${escapeHtml(repRangeText)}</span>` : ''}
+                        <input
+                            type="number"
+                            class="reps-field"
+                            data-id="${workout.id}"
+                            placeholder="Reps"
+                            min="1"
+                            value="${setEntry.reps || ''}">
+                    </label>
                     <button type="button" class="set-done-btn${setEntry.done ? ' is-done' : ''}" data-id="${workout.id}">${setEntry.done ? '&#10003;' : '&#9675;'}</button>
                 </div>
             `;
@@ -403,7 +448,7 @@ function renderWorkouts(workouts) {
                 <div class="current-workout-media">
                     <img
                         src="/exercise-thumbnail/${encodeURIComponent(workout.exerciseId)}"
-                        alt="${escapeHtml(workout.workout)} thumbnail"
+                        alt="${escapeHtml(formatTitleCase(workout.workout))} thumbnail"
                         class="current-workout-thumb"
                         loading="lazy">
                 </div>
@@ -418,7 +463,7 @@ function renderWorkouts(workouts) {
                     <div class="current-workout-main">
                         <div class="workout-card-header">
                             <div class="workout-heading-block">
-                                <h3 class="workout-title">${workout.workout}</h3>
+                                <h3 class="workout-title">${escapeHtml(formatTitleCase(workout.workout))}</h3>
                                 <textarea class="workout-notes-input" data-id="${workout.id}" placeholder="Add notes here...">${escapeHtml(workout.notes || '')}</textarea>
                             </div>
                             <div class="workout-card-tools">
@@ -718,12 +763,14 @@ function addSetRow(workoutId, setType = 'working') {
             data-id="${workoutId}"
             placeholder="KG"
             min="0">
-        <input
-            type="number"
-            class="reps-field"
-            data-id="${workoutId}"
-            placeholder="Reps"
-            min="1">
+        <label class="rep-entry-field">
+            <input
+                type="number"
+                class="reps-field"
+                data-id="${workoutId}"
+                placeholder="Reps"
+                min="1">
+        </label>
         <button type="button" class="set-done-btn" data-id="${workoutId}">&#9675;</button>
     `;
 
@@ -795,6 +842,265 @@ function closeWorkoutActionModal() {
     workoutActionModalOverlay.style.display = 'none';
 }
 
+function openStartWorkoutModal() {
+    if (startWorkoutModalOverlay) {
+        startWorkoutModalOverlay.style.display = 'flex';
+    }
+}
+
+function closeStartWorkoutModal() {
+    if (startWorkoutModalOverlay) {
+        startWorkoutModalOverlay.style.display = 'none';
+    }
+}
+
+function openRoutineBuilderModal() {
+    if (!routineBuilderModalOverlay) {
+        return;
+    }
+
+    closeStartWorkoutModal();
+    routineBuilderModalOverlay.style.display = 'flex';
+    if (routineNameInput) {
+        routineNameInput.focus();
+    }
+}
+
+function closeRoutineBuilderModal() {
+    if (routineBuilderModalOverlay) {
+        routineBuilderModalOverlay.style.display = 'none';
+    }
+}
+
+function filterRoutinePresets() {
+    if (!routinePresetList) {
+        return;
+    }
+
+    const searchTerm = routinePresetSearchInput ? routinePresetSearchInput.value.trim().toLowerCase() : '';
+    routinePresetList.querySelectorAll('.routine-preset-option').forEach(option => {
+        const matchesSearch = !searchTerm || option.dataset.searchName.includes(searchTerm);
+        option.style.display = matchesSearch ? 'flex' : 'none';
+    });
+}
+
+function addRoutineExercise(presetId, name) {
+    if (!routineExerciseList || !presetId || !name) {
+        return;
+    }
+
+    const item = document.createElement('div');
+    item.className = 'routine-exercise-item';
+    item.dataset.presetId = presetId;
+    item.innerHTML = `
+        <div class="routine-exercise-title">
+            <strong>${escapeHtml(name)}</strong>
+            <button type="button" class="routine-remove-btn" aria-label="Remove exercise">X</button>
+        </div>
+        <div class="routine-exercise-controls">
+            <label>
+                <span>Sets</span>
+                <input type="number" class="routine-sets-input" min="1" value="3">
+            </label>
+            <label>
+                <span>Rep Min</span>
+                <input type="number" class="routine-rep-min-input" min="1" value="8">
+            </label>
+            <label>
+                <span>Rep Max</span>
+                <input type="number" class="routine-rep-max-input" min="1" value="12">
+            </label>
+        </div>
+    `;
+
+    item.querySelector('.routine-remove-btn').addEventListener('click', function () {
+        item.remove();
+    });
+
+    routineExerciseList.appendChild(item);
+}
+
+function collectRoutineExercises() {
+    if (!routineExerciseList) {
+        return [];
+    }
+
+    return Array.from(routineExerciseList.querySelectorAll('.routine-exercise-item')).map(item => ({
+        preset_id: item.dataset.presetId,
+        sets: Number(item.querySelector('.routine-sets-input')?.value || 0),
+        rep_min: Number(item.querySelector('.routine-rep-min-input')?.value || 0),
+        rep_max: Number(item.querySelector('.routine-rep-max-input')?.value || 0)
+    }));
+}
+
+function getFilteredRoutines() {
+    const searchTerm = routineFilterInput ? routineFilterInput.value.trim().toLowerCase() : '';
+
+    if (!searchTerm) {
+        return savedRoutines;
+    }
+
+    return savedRoutines.filter(routine => {
+        const exercises = Array.isArray(routine.exercises) ? routine.exercises : [];
+        const exerciseText = exercises
+            .map(exercise => exercise.name || '')
+            .join(' ')
+            .toLowerCase();
+
+        return (routine.name || '').toLowerCase().includes(searchTerm)
+            || exerciseText.includes(searchTerm);
+    });
+}
+
+function renderRoutines(routines) {
+    if (!routineList) {
+        return;
+    }
+
+    if (!Array.isArray(routines) || routines.length === 0) {
+        const hasFilter = routineFilterInput && routineFilterInput.value.trim();
+        routineList.innerHTML = hasFilter
+            ? '<p class="empty-state">No routines match this filter.</p>'
+            : '<p class="empty-state">No saved routines yet. Create one from Start a New Workout.</p>';
+        return;
+    }
+
+    routineList.innerHTML = routines.map(routine => {
+        const exercises = Array.isArray(routine.exercises) ? routine.exercises : [];
+        const exerciseSummary = exercises.map(exercise => {
+            const repRange = exercise.rep_min === exercise.rep_max
+                ? `${exercise.rep_min} reps`
+                : `${exercise.rep_min}-${exercise.rep_max} reps`;
+            return `<span>${escapeHtml(formatTitleCase(exercise.name))} &middot; ${exercise.sets} sets &middot; ${repRange}</span>`;
+        }).join('');
+
+        return `
+            <article class="routine-card">
+                <div>
+                    <p class="section-label">Routine</p>
+                    <h3>${escapeHtml(formatTitleCase(routine.name))}</h3>
+                    <div class="routine-summary">${exerciseSummary}</div>
+                </div>
+                <button type="button" class="start-routine-btn" data-id="${routine.id}">Start Routine</button>
+            </article>
+        `;
+    }).join('');
+
+    routineList.querySelectorAll('.start-routine-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            startRoutine(button.dataset.id);
+        });
+    });
+}
+
+function loadRoutines() {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch('http://127.0.0.1:5000/routines', {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            savedRoutines = Array.isArray(data.data) ? data.data : [];
+            renderRoutines(getFilteredRoutines());
+        } else {
+            showMessage(data.message || 'Failed to load routines.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Load routines error:', error);
+        showMessage('Failed to load routines.', 'error');
+    });
+}
+
+function saveRoutine() {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    const name = routineNameInput ? routineNameInput.value.trim() : '';
+    const exercises = collectRoutineExercises();
+
+    if (!name) {
+        showMessage('Enter a routine name.', 'error');
+        return;
+    }
+
+    if (exercises.length === 0) {
+        showMessage('Add at least one exercise to the routine.', 'error');
+        return;
+    }
+
+    fetch('http://127.0.0.1:5000/routines', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name, exercises })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage('Routine saved successfully!', 'success');
+            if (routineBuilderForm) {
+                routineBuilderForm.reset();
+            }
+            if (routineExerciseList) {
+                routineExerciseList.innerHTML = '';
+            }
+            closeRoutineBuilderModal();
+            loadRoutines();
+        } else {
+            showMessage(data.message || 'Failed to save routine.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Save routine error:', error);
+        showMessage('Failed to save routine.', 'error');
+    });
+}
+
+function startRoutine(routineId) {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch(`http://127.0.0.1:5000/routines/${routineId}/start`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            window.location.href = '/workouts/current';
+        } else {
+            showMessage(data.message || 'Failed to start routine.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Start routine error:', error);
+        showMessage('Failed to start routine.', 'error');
+    });
+}
+
 function renderWorkoutHistory(historyItems) {
     if (!historyList) {
         return;
@@ -815,7 +1121,7 @@ function renderWorkoutHistory(historyItems) {
             <div class="history-session-list">
                 ${session.completed_workout.map(workout => `
                     <div class="history-workout-item">
-                        <p><strong>${workout.workout}</strong></p>
+                        <p><strong>${escapeHtml(formatTitleCase(workout.workout))}</strong></p>
                         <p><strong>Equipment:</strong> ${workout.equipment || 'No equipment listed'}</p>
                         <p><strong>Body Parts:</strong> ${formatMuscleList(workout.bodyParts)}</p>
                         <p><strong>Primary:</strong> ${formatMuscleList(workout.primaryMuscles)}</p>
@@ -939,6 +1245,71 @@ if (loadDataButton) {
 if (finishWorkoutButton) {
     finishWorkoutButton.addEventListener('click', function () {
         finishWorkout();
+    });
+}
+
+if (openStartWorkoutModalButton) {
+    openStartWorkoutModalButton.addEventListener('click', function () {
+        openStartWorkoutModal();
+    });
+}
+
+if (closeStartWorkoutModalButton) {
+    closeStartWorkoutModalButton.addEventListener('click', function () {
+        closeStartWorkoutModal();
+    });
+}
+
+if (startWorkoutModalOverlay) {
+    startWorkoutModalOverlay.addEventListener('click', function (event) {
+        if (event.target === startWorkoutModalOverlay) {
+            closeStartWorkoutModal();
+        }
+    });
+}
+
+if (newRoutineChoiceButton) {
+    newRoutineChoiceButton.addEventListener('click', function () {
+        openRoutineBuilderModal();
+    });
+}
+
+if (closeRoutineBuilderModalButton) {
+    closeRoutineBuilderModalButton.addEventListener('click', function () {
+        closeRoutineBuilderModal();
+    });
+}
+
+if (routineBuilderModalOverlay) {
+    routineBuilderModalOverlay.addEventListener('click', function (event) {
+        if (event.target === routineBuilderModalOverlay) {
+            closeRoutineBuilderModal();
+        }
+    });
+}
+
+if (routinePresetSearchInput) {
+    routinePresetSearchInput.addEventListener('input', filterRoutinePresets);
+}
+
+if (routineFilterInput) {
+    routineFilterInput.addEventListener('input', function () {
+        renderRoutines(getFilteredRoutines());
+    });
+}
+
+if (routinePresetList) {
+    routinePresetList.querySelectorAll('.routine-preset-option').forEach(option => {
+        option.addEventListener('click', function () {
+            addRoutineExercise(option.dataset.id, option.dataset.name);
+        });
+    });
+}
+
+if (routineBuilderForm) {
+    routineBuilderForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        saveRoutine();
     });
 }
 
@@ -1173,6 +1544,8 @@ if (window.location.pathname === '/workouts/history') {
 if (window.location.pathname === '/workouts') {
     if (!savedToken) {
         window.location.href = '/';
+    } else {
+        loadRoutines();
     }
 }
 

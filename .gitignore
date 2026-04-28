@@ -11,3 +11,5 @@ app/users.db
 *.db
 /app/data/gif
 /app/data/thumbnails
+*.json
+app/data/workoutsection.json

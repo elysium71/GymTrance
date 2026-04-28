@@ -27,19 +27,128 @@
                 </div>
             </header>
 
-            <main class="hub-grid">
-                <a href="/workouts/current" class="hub-card">
+            <main>
+                <div id="message-box" class="message-box"></div>
+
+                <div class="hub-grid">
+                <button type="button" id="open-start-workout-modal-btn" class="hub-card hub-card-button">
                     <p class="section-label">Session</p>
                     <h2>Start a New Workout</h2>
                     <p>Open your active workout dashboard, add exercises, and finish the session when done.</p>
-                </a>
+                </button>
 
                 <a href="/workouts/history" class="hub-card">
                     <p class="section-label">Archive</p>
                     <h2>View Past Workouts</h2>
                     <p>See your completed workout history and review previous training sessions.</p>
                 </a>
+                </div>
+
+                <section class="panel content-panel routine-library-panel">
+                    <div class="section-header">
+                        <div>
+                            <p class="section-label">Saved Templates</p>
+                            <h2>Your Routines</h2>
+                        </div>
+                        <label class="routine-filter">
+                            <span>Filter</span>
+                            <input type="search" id="routine-filter-input" placeholder="Search routines">
+                        </label>
+                    </div>
+                    <div id="routine-list" class="routine-list"></div>
+                </section>
             </main>
+        </div>
+
+        <div id="start-workout-modal-overlay" class="preset-modal-overlay" style="display: none;">
+            <div class="preset-modal start-workout-modal">
+                <div class="preset-modal-header">
+                    <div>
+                        <p class="section-label">Start Workout</p>
+                        <h3>Choose how to begin</h3>
+                    </div>
+                    <button type="button" id="close-start-workout-modal-btn" class="ghost-btn modal-close-btn">Close</button>
+                </div>
+
+                <div class="start-choice-grid">
+                    <button type="button" id="new-routine-choice-btn" class="start-choice-card">
+                        <strong>New Routine</strong>
+                        <span>Build exercises with sets and rep ranges, then save it for later.</span>
+                    </button>
+                    <a href="/workouts/current" class="start-choice-card">
+                        <strong>Start Empty Workout</strong>
+                        <span>Go straight to the workout screen and add exercises manually.</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div id="routine-builder-modal-overlay" class="preset-modal-overlay" style="display: none;">
+            <div class="preset-modal routine-builder-modal">
+                <div class="preset-modal-header">
+                    <div>
+                        <p class="section-label">Routine Builder</p>
+                        <h3>Create New Routine</h3>
+                    </div>
+                    <button type="button" id="close-routine-builder-modal-btn" class="ghost-btn modal-close-btn">Close</button>
+                </div>
+
+                <form id="routine-builder-form" class="routine-builder-form">
+                    <label class="routine-field">
+                        <span>Routine Name</span>
+                        <input type="text" id="routine-name-input" placeholder="Example: Pull Day">
+                    </label>
+
+                    <div class="routine-picker-grid">
+                        <div class="routine-picker-panel">
+                            <label class="routine-field">
+                                <span>Find Exercise</span>
+                                <input type="search" id="routine-preset-search-input" placeholder="Search exercise">
+                            </label>
+
+                            <div id="routine-preset-list" class="routine-preset-list">
+                                {% for workout in preset_workouts %}
+                                    <button
+                                        type="button"
+                                        class="routine-preset-option"
+                                        data-id="{{ workout.exerciseId }}"
+                                        data-name="{{ workout.name }}"
+                                        data-search-name="{{ workout.name|lower }}">
+                                        <span class="preset-option-media">
+                                            <img
+                                                src="{{ url_for('exercise_thumbnail', exercise_id=workout.exerciseId) }}"
+                                                alt="{{ workout.name }}"
+                                                class="preset-option-thumb"
+                                                loading="lazy">
+                                        </span>
+                                        <span class="preset-option-copy">
+                                            <span class="preset-option-title">{{ workout.name }}</span>
+                                            <small>
+                                                {{ (workout.equipments|first) if workout.equipments else 'No equipment listed' }}
+                                                {% if workout.bodyParts %}
+                                                    | {{ workout.bodyParts|join(', ') }}
+                                                {% endif %}
+                                            </small>
+                                        </span>
+                                    </button>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="routine-edit-panel">
+                            <div class="routine-edit-header">
+                                <h4>Workout Plan</h4>
+                                <p>Add exercises, then set the sets and rep range.</p>
+                            </div>
+                            <div id="routine-exercise-list" class="routine-exercise-list"></div>
+                        </div>
+                    </div>
+
+                    <div class="preset-modal-actions">
+                        <button type="submit" id="save-routine-btn">Save Routine</button>
+                    </div>
+                </form>
+            </div>
         </div>
 
         <script src="{{ url_for('static', filename='js/app.js') }}"></script>
