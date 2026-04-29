@@ -59,6 +59,7 @@ let pendingSetContext = null;
 let activeWorkoutActionId = null;
 let savedRoutines = [];
 let savedRoutineFolders = [];
+const openRoutineFolderIds = new Set(['unfiled']);
 
 const SET_TYPE_META = {
     warmup: { code: 'W', label: 'Warm Up' },
@@ -982,13 +983,18 @@ function renderRoutines(routines) {
         }))
     ].filter(group => group.routines.length > 0 || group.id !== null);
 
-    routineList.innerHTML = folderGroups.map(group => `
-        <section class="routine-folder-group">
-            <div class="routine-folder-heading">
+    routineList.innerHTML = folderGroups.map(group => {
+        const folderKey = group.id === null ? 'unfiled' : String(group.id);
+        const isOpen = openRoutineFolderIds.has(folderKey);
+
+        return `
+        <section class="routine-folder-group${isOpen ? ' is-open' : ''}" data-folder-id="${folderKey}">
+            <button type="button" class="routine-folder-heading" data-folder-id="${folderKey}" aria-expanded="${isOpen ? 'true' : 'false'}">
+                <span class="routine-folder-arrow">${isOpen ? '-' : '+'}</span>
                 <h3>${escapeHtml(formatTitleCase(group.name))}</h3>
                 <span>${group.routines.length} routine${group.routines.length === 1 ? '' : 's'}</span>
-            </div>
-            <div class="routine-folder-list">
+            </button>
+            <div class="routine-folder-list" ${isOpen ? '' : 'hidden'}>
                 ${group.routines.map(routine => {
         const exercises = Array.isArray(routine.exercises) ? routine.exercises : [];
         const exerciseSummary = exercises.map(exercise => {
@@ -1019,7 +1025,20 @@ function renderRoutines(routines) {
                 }).join('')}
             </div>
         </section>
-    `).join('');
+    `;
+    }).join('');
+
+    routineList.querySelectorAll('.routine-folder-heading').forEach(button => {
+        button.addEventListener('click', function () {
+            const folderId = button.dataset.folderId;
+            if (openRoutineFolderIds.has(folderId)) {
+                openRoutineFolderIds.delete(folderId);
+            } else {
+                openRoutineFolderIds.add(folderId);
+            }
+            renderRoutines(getFilteredRoutines());
+        });
+    });
 
     routineList.querySelectorAll('.start-routine-btn').forEach(button => {
         button.addEventListener('click', function () {

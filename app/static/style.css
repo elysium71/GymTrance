@@ -679,11 +679,17 @@ button:disabled:hover {
 }
 
 .routine-folder-heading {
-    display: flex;
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
     align-items: center;
-    justify-content: space-between;
     gap: 12px;
-    padding: 0 2px;
+    padding: 10px 12px;
+    width: 100%;
+    text-align: left;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(190, 205, 224, 0.1);
+    color: var(--text);
 }
 
 .routine-folder-heading h3 {
@@ -696,9 +702,25 @@ button:disabled:hover {
     font-size: 0.86rem;
 }
 
+.routine-folder-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: #101720;
+    color: var(--text);
+    font-weight: 800;
+}
+
 .routine-folder-list {
     display: grid;
     gap: 12px;
+}
+
+.routine-folder-list[hidden] {
+    display: none;
 }
 
 .routine-card {
