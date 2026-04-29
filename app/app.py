@@ -6,7 +6,7 @@ from pathlib import Path
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3 #SQL database for user authentication
 import re #for password validation
-from datetime import timedelta 
+from datetime import datetime, timedelta 
 from io import BytesIO
 from urllib.request import urlopen
 from urllib.error import URLError, HTTPError
@@ -386,6 +386,42 @@ def build_workout_from_routine_exercise(exercise, owner, workout_id):
     }
 
 
+def clean_set_details(set_details):
+    if not isinstance(set_details, list) or not set_details:
+        return None, "set_details must be a non-empty list"
+
+    cleaned_sets = []
+    for set_item in set_details:
+        if not isinstance(set_item, dict):
+            return None, "Each set must be an object"
+
+        reps = set_item.get("reps")
+        kg = set_item.get("kg", 0)
+        set_type = set_item.get("set_type", "working")
+        done = set_item.get("done", False)
+
+        if not isinstance(reps, int) or reps <= 0:
+            return None, "Each set reps must be a positive integer"
+
+        if not isinstance(kg, (int, float)) or kg < 0:
+            return None, "Each set kg must be zero or positive"
+
+        if set_type not in {"warmup", "working", "drop", "failure"}:
+            return None, "Invalid set type"
+
+        if not isinstance(done, bool):
+            return None, "done must be boolean"
+
+        cleaned_sets.append({
+            "reps": reps,
+            "kg": kg,
+            "set_type": set_type,
+            "done": done
+        })
+
+    return cleaned_sets, None
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -435,12 +471,108 @@ def get_history_data():
     current_user = get_jwt_identity()
     history = load_workout_history()
 
-    user_history = [item for item in history if item.get("owner") == current_user]
+    user_history = []
+    for index, item in enumerate(history):
+        if item.get("owner") != current_user:
+            continue
+
+        completed_workouts = [
+            enrich_workout_record(workout)
+            for workout in item.get("completed_workout", [])
+        ]
+        session_name = item.get("session_name") or item.get("routine_name")
+        if not session_name and completed_workouts:
+            session_name = completed_workouts[0].get("routine_name") or completed_workouts[0].get("workout")
+
+        enriched_item = dict(item)
+        enriched_item["id"] = item.get("id", index + 1)
+        enriched_item["session_name"] = session_name or "Workout"
+        enriched_item["completed_at"] = item.get("completed_at", "")
+        enriched_item["completed_workout"] = completed_workouts
+        user_history.append(enriched_item)
 
     return jsonify({
         "status": "success",
         "message": "Workout history retrieved",
         "data": user_history
+    }), 200
+
+
+@app.route("/history-data/<int:history_id>", methods=["PUT"])
+@jwt_required()
+def update_history_data(history_id):
+    data = request.get_json(silent=True)
+
+    if not data or not isinstance(data.get("completed_workout"), list):
+        return jsonify({"status": "error", "message": "completed_workout is required"}), 400
+
+    current_user = get_jwt_identity()
+    history = load_workout_history()
+    session_to_update = None
+
+    for index, session in enumerate(history):
+        session_id = session.get("id", index + 1)
+        if session_id == history_id:
+            if session.get("owner") != current_user:
+                return jsonify({"status": "error", "message": "You are not allowed to modify this history."}), 403
+            session_to_update = session
+            break
+
+    if not session_to_update:
+        return jsonify({"status": "error", "message": "History session not found"}), 404
+
+    requested_updates = {
+        item.get("id"): item
+        for item in data.get("completed_workout", [])
+        if isinstance(item, dict) and item.get("id") is not None
+    }
+
+    for workout in session_to_update.get("completed_workout", []):
+        update_item = requested_updates.get(workout.get("id"))
+        if not update_item:
+            continue
+
+        cleaned_sets, error = clean_set_details(update_item.get("set_details"))
+        if error:
+            return jsonify({"status": "error", "message": error}), 400
+
+        workout["set_details"] = cleaned_sets
+        workout["sets"] = len(cleaned_sets)
+        workout["reps"] = [item["reps"] for item in cleaned_sets]
+
+    save_workout_history(history)
+
+    return jsonify({
+        "status": "success",
+        "message": "Workout history updated",
+        "data": session_to_update
+    }), 200
+
+
+@app.route("/history-data/<int:history_id>", methods=["DELETE"])
+@jwt_required()
+def delete_history_data(history_id):
+    current_user = get_jwt_identity()
+    history = load_workout_history()
+    session_to_delete = None
+
+    for index, session in enumerate(history):
+        session_id = session.get("id", index + 1)
+        if session_id == history_id:
+            if session.get("owner") != current_user:
+                return jsonify({"status": "error", "message": "You are not allowed to delete this history."}), 403
+            session_to_delete = session
+            break
+
+    if not session_to_delete:
+        return jsonify({"status": "error", "message": "History session not found"}), 404
+
+    history.remove(session_to_delete)
+    save_workout_history(history)
+
+    return jsonify({
+        "status": "success",
+        "message": "Workout history deleted"
     }), 200
 
 
@@ -547,6 +679,7 @@ def start_routine(routine_id):
     for exercise in routine.get("exercises", []):
         workout = build_workout_from_routine_exercise(exercise, current_user, next_id)
         if workout:
+            workout["routine_name"] = routine.get("name", "")
             imported_workouts.append(workout)
             next_id += 1
 
@@ -663,8 +796,15 @@ def finish_workout():
             "message": "No active workout to finish"
         }), 400
 
+    session_name = user_workouts[0].get("routine_name") if user_workouts else ""
+    if not session_name:
+        session_name = user_workouts[0].get("workout") if len(user_workouts) == 1 else "Workout"
+
     workout_history.append({
+        "id": next_numeric_id(workout_history),
         "owner": current_user,
+        "session_name": session_name,
+        "completed_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "completed_workout": user_workouts
     })
     save_workout_history(workout_history)

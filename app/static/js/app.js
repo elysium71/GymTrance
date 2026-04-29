@@ -1101,6 +1101,39 @@ function startRoutine(routineId) {
     });
 }
 
+function formatHistoryDate(value) {
+    if (!value) {
+        return 'Date not saved';
+    }
+
+    const date = new Date(String(value).replace(' ', 'T'));
+    if (Number.isNaN(date.getTime())) {
+        return value;
+    }
+
+    return date.toLocaleString([], {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function getHistorySetLabel(setItem, index) {
+    const setType = setItem.set_type || 'working';
+    if (setType === 'warmup') {
+        return 'W';
+    }
+    if (setType === 'drop') {
+        return 'D';
+    }
+    if (setType === 'failure') {
+        return 'F';
+    }
+    return String(index + 1);
+}
+
 function renderWorkoutHistory(historyItems) {
     if (!historyList) {
         return;
@@ -1111,42 +1144,246 @@ function renderWorkoutHistory(historyItems) {
         return;
     }
 
-    const historyHtml = historyItems.map((session, index) => `
-        <article class="workout-card">
-            <div class="workout-card-header">
-                <h3 class="workout-title">Workout Session ${index + 1}</h3>
-                <span class="category-tag">Completed</span>
+    const historyHtml = historyItems.map(session => {
+        const sessionName = formatTitleCase(session.session_name || 'Workout');
+        const completedAt = formatHistoryDate(session.completed_at);
+        const workouts = Array.isArray(session.completed_workout) ? session.completed_workout : [];
+
+        return `
+        <article class="workout-card workout-card-sheet history-session-card" data-history-id="${session.id}">
+            <div class="history-session-header" role="button" tabindex="0" data-history-toggle="${session.id}">
+                <div>
+                    <p class="section-label">Completed Workout</p>
+                    <h3 class="workout-title">${escapeHtml(sessionName)}</h3>
+                    <p class="history-date">${escapeHtml(completedAt)}</p>
+                </div>
+                <div class="history-session-actions">
+                    <button type="button" class="history-toggle-btn secondary-btn" data-history-id="${session.id}">View Details</button>
+                    <button type="button" class="history-edit-btn secondary-btn" data-history-id="${session.id}">Edit</button>
+                    <button type="button" class="history-delete-btn danger-btn" data-history-id="${session.id}">Delete</button>
+                </div>
             </div>
 
-            <div class="history-session-list">
-                ${session.completed_workout.map(workout => `
-                    <div class="history-workout-item">
-                        <p><strong>${escapeHtml(formatTitleCase(workout.workout))}</strong></p>
-                        <p><strong>Equipment:</strong> ${workout.equipment || 'No equipment listed'}</p>
-                        <p><strong>Body Parts:</strong> ${formatMuscleList(workout.bodyParts)}</p>
-                        <p><strong>Primary:</strong> ${formatMuscleList(workout.primaryMuscles)}</p>
-                        <p><strong>Secondary:</strong> ${formatMuscleList(workout.secondaryMuscles)}</p>
+            <div class="history-session-list" hidden>
+                ${workouts.map(workout => {
+                    const setDetails = Array.isArray(workout.set_details) && workout.set_details.length > 0
+                        ? workout.set_details
+                        : (Array.isArray(workout.reps) ? workout.reps.map(rep => ({
+                            reps: rep,
+                            kg: 0,
+                            set_type: 'working',
+                            done: true
+                        })) : []);
+                    const thumbnailHtml = workout.exerciseId
+                        ? `
+                            <div class="current-workout-media history-workout-media">
+                                <img
+                                    src="/exercise-thumbnail/${encodeURIComponent(workout.exerciseId)}"
+                                    alt="${escapeHtml(formatTitleCase(workout.workout))} thumbnail"
+                                    class="current-workout-thumb"
+                                    loading="lazy">
+                            </div>
+                        `
+                        : '';
 
-                        ${Array.isArray(workout.set_details) && workout.set_details.length > 0 ? `
-                            <div class="history-set-list">
-                                ${workout.set_details.map((setItem, setIndex) => `
-                                    <p>Set ${setIndex + 1}: ${setItem.reps} reps${setItem.kg !== undefined ? `, ${setItem.kg} kg` : ''}</p>
-                                `).join('')}
+                    return `
+                        <div class="history-workout-item" data-workout-id="${workout.id}">
+                            <div class="current-workout-layout">
+                                ${thumbnailHtml}
+                                <div class="current-workout-main">
+                                    <div class="workout-card-header">
+                                        <div class="workout-heading-block">
+                                            <h4 class="workout-title">${escapeHtml(formatTitleCase(workout.workout))}</h4>
+                                        </div>
+                                        <span class="category-tag">${escapeHtml(workout.equipment || 'Custom')}</span>
+                                    </div>
+                                </div>
                             </div>
-                        ` : Array.isArray(workout.reps) && workout.reps.length > 0 ? `
-                            <div class="history-set-list">
-                                ${workout.reps.map((rep, setIndex) => `
-                                    <p>Set ${setIndex + 1}: ${rep} reps</p>
-                                `).join('')}
+
+                            <div class="strength-editor history-strength-editor">
+                                <div class="set-table-head">
+                                    <span>Set</span>
+                                    <span>Previous</span>
+                                    <span>KG</span>
+                                    <span>Reps</span>
+                                    <span>Status</span>
+                                </div>
+                                <div class="set-list history-set-list">
+                                    ${setDetails.map((setItem, setIndex) => `
+                                        <div class="set-row set-row-modern history-set-row" data-set-type="${setItem.set_type || 'working'}">
+                                            <div class="set-cell set-cell-label">
+                                                <span class="set-type-trigger is-${setItem.set_type || 'working'}">${getHistorySetLabel(setItem, setIndex)}</span>
+                                            </div>
+                                            <div class="set-cell set-cell-previous">${escapeHtml(`${setItem.kg || 0} kg x ${setItem.reps || 0}`)}</div>
+                                            <input type="number" class="history-kg-field" min="0" value="${setItem.kg || 0}" disabled>
+                                            <input type="number" class="history-reps-field" min="1" value="${setItem.reps || ''}" disabled>
+                                            <span class="history-done-mark">${setItem.done ? '&#10003;' : '&#9675;'}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
                             </div>
-                        ` : ''}
-                    </div>
-                `).join('')}
+                        </div>
+                    `;
+                }).join('')}
             </div>
         </article>
-    `).join('');
+    `;
+    }).join('');
 
     historyList.innerHTML = historyHtml;
+
+    historyList.querySelectorAll('[data-history-toggle]').forEach(header => {
+        header.addEventListener('click', function (event) {
+            if (event.target.closest('button')) {
+                return;
+            }
+            toggleHistoryDetails(header.dataset.historyToggle);
+        });
+
+        header.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                toggleHistoryDetails(header.dataset.historyToggle);
+            }
+        });
+    });
+
+    historyList.querySelectorAll('.history-toggle-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            toggleHistoryDetails(button.dataset.historyId);
+        });
+    });
+
+    historyList.querySelectorAll('.history-edit-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            const card = button.closest('.history-session-card');
+            if (!card) {
+                return;
+            }
+
+            showHistoryDetails(card, true);
+            const isEditing = card.classList.toggle('is-editing');
+            button.textContent = isEditing ? 'Save' : 'Edit';
+            card.querySelectorAll('.history-kg-field, .history-reps-field').forEach(input => {
+                input.disabled = !isEditing;
+            });
+
+            if (!isEditing) {
+                saveHistorySession(button.dataset.historyId, card);
+            }
+        });
+    });
+
+    historyList.querySelectorAll('.history-delete-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            deleteHistorySession(button.dataset.historyId);
+        });
+    });
+}
+
+function showHistoryDetails(card, shouldShow) {
+    const details = card.querySelector('.history-session-list');
+    const toggleButton = card.querySelector('.history-toggle-btn');
+
+    if (!details) {
+        return;
+    }
+
+    details.hidden = !shouldShow;
+    card.classList.toggle('is-open', shouldShow);
+    if (toggleButton) {
+        toggleButton.textContent = shouldShow ? 'Hide Details' : 'View Details';
+    }
+}
+
+function toggleHistoryDetails(historyId) {
+    const card = historyList ? historyList.querySelector(`.history-session-card[data-history-id="${historyId}"]`) : null;
+
+    if (!card) {
+        return;
+    }
+
+    const details = card.querySelector('.history-session-list');
+    showHistoryDetails(card, Boolean(details && details.hidden));
+}
+
+function collectHistorySession(card) {
+    return Array.from(card.querySelectorAll('.history-workout-item')).map(workoutEl => ({
+        id: Number(workoutEl.dataset.workoutId),
+        set_details: Array.from(workoutEl.querySelectorAll('.history-set-row')).map(row => ({
+            kg: Number(row.querySelector('.history-kg-field')?.value || 0),
+            reps: Number(row.querySelector('.history-reps-field')?.value || 0),
+            set_type: row.dataset.setType || 'working',
+            done: true
+        }))
+    }));
+}
+
+function saveHistorySession(historyId, card) {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch(`http://127.0.0.1:5000/history-data/${historyId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            completed_workout: collectHistorySession(card)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage('Past workout updated successfully!', 'success');
+            loadWorkoutHistory();
+        } else {
+            showMessage(data.message || 'Failed to update past workout.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Save history error:', error);
+        showMessage('Failed to update past workout.', 'error');
+    });
+}
+
+function deleteHistorySession(historyId) {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    const shouldDelete = window.confirm('Delete this past workout?');
+    if (!shouldDelete) {
+        return;
+    }
+
+    fetch(`http://127.0.0.1:5000/history-data/${historyId}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage('Past workout deleted.', 'success');
+            loadWorkoutHistory();
+        } else {
+            showMessage(data.message || 'Failed to delete past workout.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Delete history error:', error);
+        showMessage('Failed to delete past workout.', 'error');
+    });
 }
 
 function loadWorkoutHistory() {
@@ -1247,6 +1484,17 @@ if (finishWorkoutButton) {
         finishWorkout();
     });
 }
+
+document.querySelectorAll('.back-page-btn').forEach(button => {
+    button.addEventListener('click', function () {
+        const fallbackUrl = button.dataset.backUrl || '/workouts';
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            window.location.href = fallbackUrl;
+        }
+    });
+});
 
 if (openStartWorkoutModalButton) {
     openStartWorkoutModalButton.addEventListener('click', function () {

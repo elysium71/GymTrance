@@ -17,7 +17,7 @@
         "owner": "admin",
         "is_preset": false,
         "completed": false,
-        "notes": "Target reps: 8-12",
+        "notes": "",
         "sets": 3,
         "reps": [
             8,
@@ -45,7 +45,8 @@
             }
         ],
         "routine_rep_min": 8,
-        "routine_rep_max": 12
+        "routine_rep_max": 12,
+        "routine_name": "Pull Day"
     },
     {
         "id": 10001,
@@ -64,7 +65,7 @@
         "owner": "admin",
         "is_preset": false,
         "completed": false,
-        "notes": "Target reps: 8-12",
+        "notes": "",
         "sets": 3,
         "reps": [
             8,
@@ -92,7 +93,8 @@
             }
         ],
         "routine_rep_min": 8,
-        "routine_rep_max": 12
+        "routine_rep_max": 12,
+        "routine_name": "Pull Day"
     },
     {
         "id": 10002,
@@ -112,7 +114,7 @@
         "owner": "admin",
         "is_preset": false,
         "completed": false,
-        "notes": "Target reps: 8-12",
+        "notes": "",
         "sets": 3,
         "reps": [
             8,
@@ -140,7 +142,8 @@
             }
         ],
         "routine_rep_min": 8,
-        "routine_rep_max": 12
+        "routine_rep_max": 12,
+        "routine_name": "Pull Day"
     },
     {
         "id": 10003,
@@ -160,7 +163,7 @@
         "owner": "admin",
         "is_preset": false,
         "completed": false,
-        "notes": "Target reps: 8-12",
+        "notes": "",
         "sets": 3,
         "reps": [
             8,
@@ -188,7 +191,8 @@
             }
         ],
         "routine_rep_min": 8,
-        "routine_rep_max": 12
+        "routine_rep_max": 12,
+        "routine_name": "Pull Day"
     },
     {
         "id": 10004,
@@ -208,7 +212,7 @@
         "owner": "admin",
         "is_preset": false,
         "completed": false,
-        "notes": "Target reps: 8-12",
+        "notes": "",
         "sets": 3,
         "reps": [
             8,
@@ -236,7 +240,8 @@
             }
         ],
         "routine_rep_min": 8,
-        "routine_rep_max": 12
+        "routine_rep_max": 12,
+        "routine_name": "Pull Day"
     },
     {
         "id": 10005,
@@ -257,7 +262,7 @@
         "owner": "admin",
         "is_preset": false,
         "completed": false,
-        "notes": "Target reps: 8-12",
+        "notes": "",
         "sets": 3,
         "reps": [
             8,
@@ -285,7 +290,8 @@
             }
         ],
         "routine_rep_min": 8,
-        "routine_rep_max": 12
+        "routine_rep_max": 12,
+        "routine_name": "Pull Day"
     },
     {
         "id": 10006,
@@ -306,7 +312,7 @@
         "owner": "admin",
         "is_preset": false,
         "completed": false,
-        "notes": "Target reps: 8-12",
+        "notes": "",
         "sets": 3,
         "reps": [
             8,
@@ -334,6 +340,7 @@
             }
         ],
         "routine_rep_min": 8,
-        "routine_rep_max": 12
+        "routine_rep_max": 12,
+        "routine_name": "Pull Day"
     }
 ]

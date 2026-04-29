@@ -50,6 +50,20 @@ body {
     box-shadow: var(--shadow);
 }
 
+.back-page-btn {
+    width: auto;
+    margin-bottom: 14px;
+    padding: 10px 16px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+    border: 1px solid var(--line);
+}
+
+.back-page-btn::before {
+    content: "< ";
+}
+
 .eyebrow,
 .section-label,
 .badge-label {
@@ -687,9 +701,60 @@ button:disabled:hover {
 
 .history-session-list {
     display: grid;
-    gap: 8px;
+    gap: 18px;
     margin-top: 14px;
     color: var(--muted);
+}
+
+.history-session-card {
+    display: grid;
+    gap: 20px;
+}
+
+.history-session-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+}
+
+.history-date {
+    margin: 8px 0 0;
+    color: var(--muted);
+}
+
+.history-edit-btn {
+    width: auto;
+    min-width: 110px;
+}
+
+.history-session-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.history-session-actions button {
+    width: auto;
+    min-width: 112px;
+}
+
+.danger-btn {
+    background: rgba(255, 95, 109, 0.12);
+    color: #ffccd1;
+    border: 1px solid rgba(255, 95, 109, 0.26);
+}
+
+.history-session-list[hidden] {
+    display: none;
+}
+
+.history-session-card:not(.is-open) {
+    gap: 0;
 }
 
 @media (max-width: 900px) {
@@ -708,12 +773,50 @@ button:disabled:hover {
 }
 
 .history-workout-item {
-    padding: 12px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 16px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.history-workout-item:last-child {
-    border-bottom: none;
+.history-workout-item + .history-workout-item {
+    margin-top: 14px;
+}
+
+.history-workout-media {
+    width: 76px;
+    height: 76px;
+}
+
+.history-strength-editor {
+    margin-top: 16px;
+}
+
+.history-set-list {
+    display: grid;
+    gap: 10px;
+}
+
+.history-set-row input:disabled {
+    opacity: 0.72;
+    cursor: not-allowed;
+}
+
+.history-session-card.is-editing .history-set-row input {
+    opacity: 1;
+    border-color: rgba(120, 156, 255, 0.26);
+}
+
+.history-done-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    border-radius: 14px;
+    color: #b8ffe0;
+    background: rgba(61, 220, 151, 0.12);
+    border: 1px solid rgba(61, 220, 151, 0.2);
+    font-weight: 800;
 }
 
 .history-workout-item p {
@@ -721,8 +824,8 @@ button:disabled:hover {
 }
 
 .history-set-list {
-    margin-top: 8px;
-    padding-left: 10px;
+    margin-top: 0;
+    padding-left: 0;
     color: var(--muted);
 }
 
