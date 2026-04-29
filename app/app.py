@@ -393,9 +393,13 @@ def calculate_muscle_split(workouts):
             continue
 
         set_details = workout.get("set_details", [])
-        set_count = len(set_details) if isinstance(set_details, list) and set_details else workout.get("sets", 1)
-        if not isinstance(set_count, int) or set_count <= 0:
-            set_count = 1
+        if isinstance(set_details, list) and set_details:
+            set_count = sum(1 for set_item in set_details if isinstance(set_item, dict) and set_item.get("done") is True)
+        else:
+            set_count = 1 if workout.get("completed") is True else 0
+
+        if set_count <= 0:
+            continue
 
         primary_muscles = normalize_string_list(workout.get("primaryMuscles"))
         secondary_muscles = normalize_string_list(workout.get("secondaryMuscles"))
@@ -474,6 +478,18 @@ def calculate_muscle_map(workouts):
 
     for workout in workouts:
         if not isinstance(workout, dict):
+            continue
+
+        set_details = workout.get("set_details", [])
+        if isinstance(set_details, list) and set_details:
+            has_completed_set = any(
+                isinstance(set_item, dict) and set_item.get("done") is True
+                for set_item in set_details
+            )
+        else:
+            has_completed_set = workout.get("completed") is True
+
+        if not has_completed_set:
             continue
 
         primary_groups = {
