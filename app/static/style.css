@@ -1795,3 +1795,247 @@ button:disabled:hover {
         gap: 14px;
     }
 }
+
+/* Product polish pass: flatter, denser, and less template-like. */
+:root {
+    --bg: #0b0f14;
+    --bg-soft: #111821;
+    --panel: #141b24;
+    --panel-strong: #18212b;
+    --line: rgba(190, 205, 224, 0.12);
+    --text: #f3f6f9;
+    --muted: #9daabb;
+    --accent: #ff7a3d;
+    --accent-strong: #ff9a66;
+    --success: #50d6a0;
+    --error: #ff6877;
+    --shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+}
+
+body {
+    font-family: "Aptos", "Segoe UI", sans-serif;
+    background:
+        linear-gradient(90deg, rgba(255, 122, 61, 0.06) 0 1px, transparent 1px 100%),
+        linear-gradient(180deg, #090d12 0%, #0c1118 44%, #090d12 100%);
+    background-size: 72px 100%, auto;
+}
+
+.page-shell {
+    padding-top: 20px;
+}
+
+.hero {
+    align-items: center;
+    padding: 22px 24px;
+    border-radius: 18px;
+    background:
+        linear-gradient(90deg, rgba(255, 122, 61, 0.12), transparent 38%),
+        #111821;
+    box-shadow: none;
+}
+
+.hero h1 {
+    font-family: "Bahnschrift", "Aptos", "Segoe UI", sans-serif;
+    font-size: clamp(2rem, 4vw, 3.15rem);
+    line-height: 1;
+    letter-spacing: 0;
+}
+
+.hero-text {
+    max-width: 620px;
+    margin-top: 10px;
+    line-height: 1.5;
+}
+
+.eyebrow,
+.section-label,
+.badge-label {
+    letter-spacing: 0.12em;
+    color: var(--accent);
+}
+
+.panel,
+.auth-card,
+.workout-panel,
+.add-panel,
+.hub-card,
+.workout-card,
+.mini-box,
+.preset-modal {
+    border-radius: 16px;
+    background: var(--panel);
+    box-shadow: none;
+}
+
+.content-panel,
+.add-panel,
+.auth-panel {
+    padding: 22px;
+}
+
+.back-page-btn,
+.secondary-btn,
+.ghost-btn,
+.history-edit-btn,
+.history-toggle-btn,
+.start-routine-btn,
+.toggle-detail-btn,
+.workout-menu-btn,
+.modal-close-btn {
+    border-radius: 10px;
+    background: #1b2531;
+    border: 1px solid rgba(190, 205, 224, 0.12);
+    color: var(--text);
+    box-shadow: none;
+}
+
+.danger-btn,
+.delete-workout-btn,
+.routine-remove-btn {
+    border-radius: 10px;
+    background: rgba(255, 104, 119, 0.12);
+    border: 1px solid rgba(255, 104, 119, 0.28);
+    color: #ffc4ca;
+}
+
+.stack-form button,
+button[type="submit"],
+.workout-card.workout-card-sheet .add-set-btn {
+    border-radius: 10px;
+    background: #eef2f6;
+    color: #121821;
+    font-weight: 800;
+}
+
+input,
+select,
+textarea,
+.workout-notes-input {
+    border-radius: 10px;
+    background: #101720;
+    border-color: rgba(190, 205, 224, 0.14);
+}
+
+input:focus,
+select:focus,
+.workout-notes-input:focus {
+    border-color: rgba(255, 122, 61, 0.58);
+    box-shadow: 0 0 0 2px rgba(255, 122, 61, 0.14);
+}
+
+.hub-card {
+    padding: 24px;
+    transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+
+.hub-card:hover {
+    background: #18212b;
+    transform: translateY(-2px);
+}
+
+.workout-card.workout-card-sheet,
+.history-session-card {
+    background: #141b24;
+    border-color: rgba(190, 205, 224, 0.12);
+}
+
+.workout-card.workout-card-sheet .current-workout-layout {
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 18px;
+}
+
+.workout-card.workout-card-sheet .current-workout-media,
+.current-workout-media,
+.preset-option-media {
+    border-radius: 12px;
+    background: #f6f7f8;
+}
+
+.workout-card.workout-card-sheet .current-workout-media {
+    width: 88px;
+    height: 88px;
+}
+
+.workout-title {
+    font-family: "Bahnschrift", "Aptos", "Segoe UI", sans-serif;
+}
+
+.category-tag {
+    min-width: auto;
+    border-radius: 999px;
+    background: rgba(255, 122, 61, 0.13);
+    border: 1px solid rgba(255, 122, 61, 0.2);
+    color: #ffc2a2;
+}
+
+.workout-card.workout-card-sheet .set-table-head,
+.set-table-head {
+    padding-inline: 10px;
+    color: #b6c2d0;
+    font-size: 0.78rem;
+}
+
+.workout-card.workout-card-sheet .set-row,
+.history-set-row {
+    border-radius: 12px;
+    background: #101720;
+    border-color: rgba(190, 205, 224, 0.1);
+}
+
+.set-type-trigger,
+.history-done-mark,
+.set-done-btn,
+.workout-card.workout-card-sheet .set-row input {
+    border-radius: 10px;
+}
+
+.set-done-btn.is-done,
+.history-done-mark {
+    background: rgba(80, 214, 160, 0.16);
+    border-color: rgba(80, 214, 160, 0.28);
+    color: #bdf7df;
+}
+
+.preset-modal-overlay {
+    background: rgba(5, 8, 12, 0.78);
+    backdrop-filter: blur(5px);
+}
+
+.preset-workout-option,
+.routine-preset-option,
+.routine-exercise-item,
+.routine-card,
+.history-workout-item {
+    border-radius: 12px;
+    background: #101720;
+    border-color: rgba(190, 205, 224, 0.1);
+}
+
+.workout-detail-topbar,
+.workout-detail-copy,
+.workout-detail-modal {
+    background: var(--panel);
+}
+
+.workout-detail-copy {
+    border-radius: 14px;
+}
+
+@media (max-width: 760px) {
+    .hero {
+        padding: 18px;
+    }
+
+    .content-panel,
+    .add-panel,
+    .auth-panel {
+        padding: 16px;
+    }
+
+    .workout-card.workout-card-sheet .current-workout-layout {
+        grid-template-columns: 1fr;
+    }
+}
