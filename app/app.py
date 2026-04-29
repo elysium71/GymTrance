@@ -23,6 +23,7 @@ PRESET_FILE = DATA_DIR / "workouts.json"
 WORKOUT_SECTION_FILE = DATA_DIR / "workoutsection.json"
 WORKOUT_HISTORY_FILE = DATA_DIR / "workouthistory.json"
 ROUTINE_FILE = DATA_DIR / "routines.json"
+ROUTINE_FOLDER_FILE = DATA_DIR / "routinefolders.json"
 THUMBNAIL_DIR = DATA_DIR / "thumbnails"
 GIF_DIR = DATA_DIR / "gif"
 
@@ -43,6 +44,10 @@ if not WORKOUT_HISTORY_FILE.exists():
 
 if not ROUTINE_FILE.exists():
     with open(ROUTINE_FILE, "w", encoding="utf-8") as f:
+        f.write("[]")
+
+if not ROUTINE_FOLDER_FILE.exists():
+    with open(ROUTINE_FOLDER_FILE, "w", encoding="utf-8") as f:
         f.write("[]")
 
 
@@ -262,6 +267,23 @@ def load_routines():
 def save_routines(routines):
     with open(ROUTINE_FILE, "w", encoding="utf-8") as file:
         json.dump(routines, file, indent=4)
+
+
+def load_routine_folders():
+    try:
+        with open(ROUTINE_FOLDER_FILE, "r", encoding="utf-8") as file:
+            folders = json.load(file)
+    except (json.JSONDecodeError, FileNotFoundError):
+        with open(ROUTINE_FOLDER_FILE, "w", encoding="utf-8") as file:
+            json.dump([], file)
+        return []
+
+    return folders if isinstance(folders, list) else []
+
+
+def save_routine_folders(folders):
+    with open(ROUTINE_FOLDER_FILE, "w", encoding="utf-8") as file:
+        json.dump(folders, file, indent=4)
 
 
 def normalize_text(value):
@@ -590,6 +612,95 @@ def get_routines():
     }), 200
 
 
+@app.route("/routine-folders", methods=["GET"])
+@jwt_required()
+def get_routine_folders():
+    current_user = get_jwt_identity()
+    folders = load_routine_folders()
+    user_folders = [folder for folder in folders if folder.get("owner") == current_user]
+
+    return jsonify({
+        "status": "success",
+        "message": "Routine folders retrieved",
+        "data": user_folders
+    }), 200
+
+
+@app.route("/routine-folders", methods=["POST"])
+@jwt_required()
+def create_routine_folder():
+    data = request.get_json(silent=True)
+
+    if not data:
+        return jsonify({"status": "error", "message": "No data provided"}), 400
+
+    name = normalize_text(data.get("name"))
+    if not name:
+        return jsonify({"status": "error", "message": "Folder name is required"}), 400
+
+    current_user = get_jwt_identity()
+    folders = load_routine_folders()
+    folder = {
+        "id": next_numeric_id(folders),
+        "owner": current_user,
+        "name": name
+    }
+
+    folders.append(folder)
+    save_routine_folders(folders)
+
+    return jsonify({
+        "status": "success",
+        "message": "Routine folder saved",
+        "data": folder
+    }), 201
+
+
+@app.route("/routines/<int:routine_id>", methods=["PUT"])
+@jwt_required()
+def update_routine(routine_id):
+    data = request.get_json(silent=True)
+
+    if not data or "folder_id" not in data:
+        return jsonify({"status": "error", "message": "folder_id is required"}), 400
+
+    folder_id = data.get("folder_id")
+    if folder_id is not None and not isinstance(folder_id, int):
+        return jsonify({"status": "error", "message": "folder_id must be a number or null"}), 400
+
+    current_user = get_jwt_identity()
+    routines = load_routines()
+    routine_to_update = None
+
+    if folder_id is not None:
+        folders = load_routine_folders()
+        folder_exists = any(
+            folder.get("id") == folder_id and folder.get("owner") == current_user
+            for folder in folders
+        )
+        if not folder_exists:
+            return jsonify({"status": "error", "message": "Folder not found"}), 404
+
+    for routine in routines:
+        if routine.get("id") == routine_id:
+            if routine.get("owner") != current_user:
+                return jsonify({"status": "error", "message": "You are not allowed to update this routine."}), 403
+            routine["folder_id"] = folder_id
+            routine_to_update = routine
+            break
+
+    if not routine_to_update:
+        return jsonify({"status": "error", "message": "Routine not found"}), 404
+
+    save_routines(routines)
+
+    return jsonify({
+        "status": "success",
+        "message": "Routine updated",
+        "data": routine_to_update
+    }), 200
+
+
 @app.route("/routines", methods=["POST"])
 @jwt_required()
 def create_routine():
@@ -642,6 +753,7 @@ def create_routine():
         "id": next_numeric_id(routines),
         "owner": current_user,
         "name": name,
+        "folder_id": None,
         "exercises": cleaned_exercises
     }
 

@@ -52,11 +52,13 @@ const routinePresetList = document.querySelector('#routine-preset-list');
 const routineExerciseList = document.querySelector('#routine-exercise-list');
 const routineList = document.querySelector('#routine-list');
 const routineFilterInput = document.querySelector('#routine-filter-input');
+const makeRoutineFolderButton = document.querySelector('#make-routine-folder-btn');
 
 const savedToken = localStorage.getItem('access_token');
 let pendingSetContext = null;
 let activeWorkoutActionId = null;
 let savedRoutines = [];
+let savedRoutineFolders = [];
 
 const SET_TYPE_META = {
     warmup: { code: 'W', label: 'Warm Up' },
@@ -957,7 +959,7 @@ function renderRoutines(routines) {
         return;
     }
 
-    if (!Array.isArray(routines) || routines.length === 0) {
+    if ((!Array.isArray(routines) || routines.length === 0) && savedRoutineFolders.length === 0) {
         const hasFilter = routineFilterInput && routineFilterInput.value.trim();
         routineList.innerHTML = hasFilter
             ? '<p class="empty-state">No routines match this filter.</p>'
@@ -965,7 +967,29 @@ function renderRoutines(routines) {
         return;
     }
 
-    routineList.innerHTML = routines.map(routine => {
+    const visibleRoutines = Array.isArray(routines) ? routines : [];
+    const folderOptions = [
+        '<option value="">Unfiled</option>',
+        ...savedRoutineFolders.map(folder => (
+            `<option value="${folder.id}">${escapeHtml(formatTitleCase(folder.name))}</option>`
+        ))
+    ].join('');
+    const folderGroups = [
+        { id: null, name: 'Unfiled', routines: visibleRoutines.filter(routine => !routine.folder_id) },
+        ...savedRoutineFolders.map(folder => ({
+            ...folder,
+            routines: visibleRoutines.filter(routine => routine.folder_id === folder.id)
+        }))
+    ].filter(group => group.routines.length > 0 || group.id !== null);
+
+    routineList.innerHTML = folderGroups.map(group => `
+        <section class="routine-folder-group">
+            <div class="routine-folder-heading">
+                <h3>${escapeHtml(formatTitleCase(group.name))}</h3>
+                <span>${group.routines.length} routine${group.routines.length === 1 ? '' : 's'}</span>
+            </div>
+            <div class="routine-folder-list">
+                ${group.routines.map(routine => {
         const exercises = Array.isArray(routine.exercises) ? routine.exercises : [];
         const exerciseSummary = exercises.map(exercise => {
             const repRange = exercise.rep_min === exercise.rep_max
@@ -981,14 +1005,33 @@ function renderRoutines(routines) {
                     <h3>${escapeHtml(formatTitleCase(routine.name))}</h3>
                     <div class="routine-summary">${exerciseSummary}</div>
                 </div>
-                <button type="button" class="start-routine-btn" data-id="${routine.id}">Start Routine</button>
+                <div class="routine-card-actions">
+                    <label class="routine-folder-select">
+                        <span>Folder</span>
+                        <select class="routine-folder-input" data-id="${routine.id}">
+                            ${folderOptions}
+                        </select>
+                    </label>
+                    <button type="button" class="start-routine-btn" data-id="${routine.id}">Start Routine</button>
+                </div>
             </article>
         `;
-    }).join('');
+                }).join('')}
+            </div>
+        </section>
+    `).join('');
 
     routineList.querySelectorAll('.start-routine-btn').forEach(button => {
         button.addEventListener('click', function () {
             startRoutine(button.dataset.id);
+        });
+    });
+
+    routineList.querySelectorAll('.routine-folder-input').forEach(select => {
+        const routine = savedRoutines.find(item => String(item.id) === select.dataset.id);
+        select.value = routine && routine.folder_id ? String(routine.folder_id) : '';
+        select.addEventListener('change', function () {
+            updateRoutineFolder(select.dataset.id, select.value ? Number(select.value) : null);
         });
     });
 }
@@ -1001,24 +1044,99 @@ function loadRoutines() {
         return;
     }
 
-    fetch('http://127.0.0.1:5000/routines', {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            savedRoutines = Array.isArray(data.data) ? data.data : [];
+    Promise.all([
+        fetch('http://127.0.0.1:5000/routines', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        }).then(response => response.json()),
+        fetch('http://127.0.0.1:5000/routine-folders', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        }).then(response => response.json())
+    ])
+    .then(([routineData, folderData]) => {
+        if (routineData.status === 'success' && folderData.status === 'success') {
+            savedRoutines = Array.isArray(routineData.data) ? routineData.data : [];
+            savedRoutineFolders = Array.isArray(folderData.data) ? folderData.data : [];
             renderRoutines(getFilteredRoutines());
         } else {
-            showMessage(data.message || 'Failed to load routines.', 'error');
+            showMessage(routineData.message || folderData.message || 'Failed to load routines.', 'error');
         }
     })
     .catch(error => {
         console.error('Load routines error:', error);
         showMessage('Failed to load routines.', 'error');
+    });
+}
+
+function createRoutineFolder() {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    const name = window.prompt('Folder name');
+    if (!name || !name.trim()) {
+        return;
+    }
+
+    fetch('http://127.0.0.1:5000/routine-folders', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: name.trim() })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage('Folder created.', 'success');
+            loadRoutines();
+        } else {
+            showMessage(data.message || 'Failed to create folder.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Create folder error:', error);
+        showMessage('Failed to create folder.', 'error');
+    });
+}
+
+function updateRoutineFolder(routineId, folderId) {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch(`http://127.0.0.1:5000/routines/${routineId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ folder_id: folderId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage('Routine folder updated.', 'success');
+            loadRoutines();
+        } else {
+            showMessage(data.message || 'Failed to update routine folder.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Update routine folder error:', error);
+        showMessage('Failed to update routine folder.', 'error');
     });
 }
 
@@ -1543,6 +1661,12 @@ if (routinePresetSearchInput) {
 if (routineFilterInput) {
     routineFilterInput.addEventListener('input', function () {
         renderRoutines(getFilteredRoutines());
+    });
+}
+
+if (makeRoutineFolderButton) {
+    makeRoutineFolderButton.addEventListener('click', function () {
+        createRoutineFolder();
     });
 }
 

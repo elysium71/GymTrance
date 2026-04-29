@@ -655,6 +655,11 @@ button:disabled:hover {
     width: min(280px, 100%);
 }
 
+.routine-folder-create-btn {
+    width: auto;
+    min-width: 140px;
+}
+
 .routine-filter span {
     color: var(--muted);
     font-size: 0.78rem;
@@ -665,7 +670,35 @@ button:disabled:hover {
 
 .routine-list {
     display: grid;
-    gap: 14px;
+    gap: 18px;
+}
+
+.routine-folder-group {
+    display: grid;
+    gap: 12px;
+}
+
+.routine-folder-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 2px;
+}
+
+.routine-folder-heading h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.routine-folder-heading span {
+    color: var(--muted);
+    font-size: 0.86rem;
+}
+
+.routine-folder-list {
+    display: grid;
+    gap: 12px;
 }
 
 .routine-card {
@@ -697,6 +730,31 @@ button:disabled:hover {
     background: rgba(61, 220, 151, 0.12);
     color: #bff8df;
     border: 1px solid rgba(61, 220, 151, 0.24);
+}
+
+.routine-card-actions {
+    display: grid;
+    gap: 10px;
+    justify-items: end;
+}
+
+.routine-folder-select {
+    display: grid;
+    gap: 6px;
+    width: min(220px, 100%);
+}
+
+.routine-folder-select span {
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.routine-folder-input {
+    padding: 10px 12px;
+    min-height: 42px;
 }
 
 .history-session-list {
@@ -1774,6 +1832,16 @@ button:disabled:hover {
     .routine-exercise-controls,
     .routine-card {
         grid-template-columns: 1fr;
+    }
+
+    .routine-card-actions {
+        justify-items: stretch;
+    }
+
+    .routine-folder-select,
+    .routine-card-actions .start-routine-btn,
+    .routine-folder-create-btn {
+        width: 100%;
     }
 
     .workout-detail-modal {
