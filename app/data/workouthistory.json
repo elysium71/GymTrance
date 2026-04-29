@@ -2703,5 +2703,35 @@
                 "secondary_hits": 1
             }
         ]
+    },
+    {
+        "id": 10006,
+        "owner": "admin",
+        "session_name": "upward facing dog",
+        "completed_at": "2026-04-29 23:02",
+        "completed_workout": [
+            {
+                "id": 10000,
+                "preset_id": "01qpYSe",
+                "workout": "upward facing dog",
+                "equipment": "body weight",
+                "bodyParts": [
+                    "back"
+                ],
+                "primaryMuscles": [
+                    "spine"
+                ],
+                "secondaryMuscles": [
+                    "shoulders",
+                    "chest"
+                ],
+                "owner": "admin",
+                "is_preset": false,
+                "completed": false,
+                "notes": ""
+            }
+        ],
+        "muscle_split": [],
+        "muscle_map": []
     }
 ]

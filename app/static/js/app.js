@@ -47,6 +47,7 @@ const openStartWorkoutModalButton = document.querySelector('#open-start-workout-
 const startWorkoutModalOverlay = document.querySelector('#start-workout-modal-overlay');
 const closeStartWorkoutModalButton = document.querySelector('#close-start-workout-modal-btn');
 const newRoutineChoiceButton = document.querySelector('#new-routine-choice-btn');
+const startEmptyWorkoutButton = document.querySelector('#start-empty-workout-btn');
 const routineBuilderModalOverlay = document.querySelector('#routine-builder-modal-overlay');
 const closeRoutineBuilderModalButton = document.querySelector('#close-routine-builder-modal-btn');
 const routineBuilderForm = document.querySelector('#routine-builder-form');
@@ -57,6 +58,13 @@ const routineExerciseList = document.querySelector('#routine-exercise-list');
 const routineList = document.querySelector('#routine-list');
 const routineFilterInput = document.querySelector('#routine-filter-input');
 const makeRoutineFolderButton = document.querySelector('#make-routine-folder-btn');
+const statsRangeSelect = document.querySelector('#stats-range-select');
+const statsSummaryGrid = document.querySelector('#stats-summary-grid');
+const statsConsistency = document.querySelector('#stats-consistency');
+const statsMuscleBars = document.querySelector('#stats-muscle-bars');
+const statsDistributionChart = document.querySelector('#stats-distribution-chart');
+const statsMuscleMapBody = document.querySelector('#stats-muscle-map-body');
+const statsMainExercises = document.querySelector('#stats-main-exercises');
 
 const savedToken = localStorage.getItem('access_token');
 let pendingSetContext = null;
@@ -393,8 +401,8 @@ function closeWorkoutDetailModal() {
     workoutDetailBody.innerHTML = '';
 }
 
-function renderMuscleMap(muscleMap) {
-    if (!muscleMapBody) {
+function renderMuscleMap(muscleMap, targetElement = muscleMapBody) {
+    if (!targetElement) {
         return;
     }
 
@@ -409,7 +417,7 @@ function renderMuscleMap(muscleMap) {
 
     const mapClass = group => `muscle-map-part is-${levels[group] || 'none'}`;
 
-    muscleMapBody.innerHTML = `
+    targetElement.innerHTML = `
         <div class="muscle-map-figure is-front">
             <span class="muscle-map-label">Front</span>
             <svg class="muscle-map-svg" viewBox="0 0 220 360" role="img" aria-label="Front muscle map">
@@ -972,6 +980,34 @@ function closeStartWorkoutModal() {
     if (startWorkoutModalOverlay) {
         startWorkoutModalOverlay.style.display = 'none';
     }
+}
+
+function startEmptyWorkout() {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch('http://127.0.0.1:5000/start-empty-workout', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            window.location.href = `/workouts/current?empty=${Date.now()}`;
+        } else {
+            showMessage(data.message || 'Failed to start empty workout.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Start empty workout error:', error);
+        showMessage('Failed to start empty workout.', 'error');
+    });
 }
 
 function openRoutineBuilderModal(routine = null, folderId = null) {
@@ -1928,6 +1964,136 @@ function deleteHistorySession(historyId) {
     });
 }
 
+function formatStatNumber(value) {
+    const number = Number(value) || 0;
+    return new Intl.NumberFormat().format(Math.round(number));
+}
+
+function renderStatistics(stats) {
+    if (!stats) {
+        return;
+    }
+
+    const summary = stats.summary || {};
+    if (statsSummaryGrid) {
+        const summaryItems = [
+            { label: 'Workouts', value: summary.workouts || 0 },
+            { label: 'Completed Sets', value: summary.sets || 0 },
+            { label: 'Training Volume', value: `${formatStatNumber(summary.volume || 0)} kg` },
+            { label: 'Total Reps', value: summary.reps || 0 }
+        ];
+        statsSummaryGrid.innerHTML = summaryItems.map(item => `
+            <article class="stats-summary-card">
+                <span>${escapeHtml(item.label)}</span>
+                <strong>${escapeHtml(item.value)}</strong>
+            </article>
+        `).join('');
+    }
+
+    if (statsConsistency) {
+        const days = Array.isArray(stats.consistency) ? stats.consistency : [];
+        const maxWorkouts = Math.max(1, ...days.map(day => Number(day.workouts) || 0));
+        statsConsistency.innerHTML = days.map(day => {
+            const workouts = Number(day.workouts) || 0;
+            const height = workouts ? Math.max(22, (workouts / maxWorkouts) * 100) : 8;
+            const muscles = Array.isArray(day.muscles) && day.muscles.length ? day.muscles.join(', ') : 'No muscles trained';
+            return `
+                <div class="stats-day" title="${escapeHtml(muscles)}">
+                    <div class="stats-day-bar">
+                        <span style="height: ${height}%"></span>
+                    </div>
+                    <strong>${escapeHtml(day.label || '')}</strong>
+                    <small>${workouts}</small>
+                </div>
+            `;
+        }).join('');
+    }
+
+    if (statsMuscleBars) {
+        const muscles = Array.isArray(stats.muscle_counts) ? stats.muscle_counts.slice(0, 10) : [];
+        const maxSets = Math.max(1, ...muscles.map(item => Number(item.sets) || 0));
+        statsMuscleBars.innerHTML = muscles.length ? muscles.map(item => {
+            const sets = Number(item.sets) || 0;
+            return `
+                <div class="stats-bar-row">
+                    <div class="stats-bar-label">
+                        <span>${escapeHtml(item.label)}</span>
+                        <strong>${sets}</strong>
+                    </div>
+                    <div class="stats-bar-track">
+                        <span style="width: ${(sets / maxSets) * 100}%"></span>
+                    </div>
+                </div>
+            `;
+        }).join('') : '<p class="empty-state">No completed set data yet.</p>';
+    }
+
+    if (statsDistributionChart) {
+        const distribution = Array.isArray(stats.muscle_distribution) ? stats.muscle_distribution.slice(0, 6) : [];
+        let cursor = 0;
+        const colors = ['#ff7a3d', '#3ddc97', '#4095ff', '#ffc857', '#ff6b80', '#a78bfa'];
+        const segments = distribution.map((item, index) => {
+            const start = cursor;
+            cursor += Number(item.percent) || 0;
+            return `${colors[index % colors.length]} ${start}% ${cursor}%`;
+        });
+
+        statsDistributionChart.innerHTML = distribution.length ? `
+            <div class="stats-donut-chart" style="background: conic-gradient(${segments.join(', ')}, rgba(190, 205, 224, 0.12) ${cursor}% 100%)">
+                <span>${summary.sets || 0}<small>sets</small></span>
+            </div>
+            <div class="stats-donut-legend">
+                ${distribution.map((item, index) => `
+                    <span><i style="background:${colors[index % colors.length]}"></i>${escapeHtml(item.label)} ${item.percent}%</span>
+                `).join('')}
+            </div>
+        ` : '<p class="empty-state">No distribution data yet.</p>';
+    }
+
+    renderMuscleMap(stats.muscle_map || [], statsMuscleMapBody);
+
+    if (statsMainExercises) {
+        const exercises = Array.isArray(stats.main_exercises) ? stats.main_exercises : [];
+        statsMainExercises.innerHTML = exercises.length ? exercises.map((exercise, index) => `
+            <div class="stats-exercise-row">
+                <span>${index + 1}</span>
+                <div>
+                    <strong>${escapeHtml(formatTitleCase(exercise.name))}</strong>
+                    <small>${exercise.count || 0} workouts | ${exercise.sets || 0} sets | ${formatStatNumber(exercise.volume || 0)} kg volume</small>
+                </div>
+            </div>
+        `).join('') : '<p class="empty-state">No exercises logged yet.</p>';
+    }
+}
+
+function loadStatistics() {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    const range = statsRangeSelect ? statsRangeSelect.value : '30d';
+    fetch(`http://127.0.0.1:5000/statistics-data?range=${encodeURIComponent(range)}`, {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            renderStatistics(data.data);
+        } else {
+            showMessage(data.message || 'Failed to load statistics.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Load statistics error:', error);
+        showMessage('Failed to load statistics.', 'error');
+    });
+}
+
 function loadWorkoutHistory() {
     const token = localStorage.getItem('access_token');
 
@@ -2061,6 +2227,12 @@ if (startWorkoutModalOverlay) {
 if (newRoutineChoiceButton) {
     newRoutineChoiceButton.addEventListener('click', function () {
         openRoutineBuilderModal();
+    });
+}
+
+if (startEmptyWorkoutButton) {
+    startEmptyWorkoutButton.addEventListener('click', function () {
+        startEmptyWorkout();
     });
 }
 
@@ -2333,6 +2505,12 @@ if (logoutButton) {
     });
 }
 
+if (statsRangeSelect) {
+    statsRangeSelect.addEventListener('change', function () {
+        loadStatistics();
+    });
+}
+
 updateWorkoutButtons();
 
 if (window.location.pathname === '/workouts/current') {
@@ -2356,6 +2534,14 @@ if (window.location.pathname === '/workouts') {
         window.location.href = '/';
     } else {
         loadRoutines();
+    }
+}
+
+if (window.location.pathname === '/workouts/statistics') {
+    if (!savedToken) {
+        window.location.href = '/';
+    } else {
+        loadStatistics();
     }
 }
 

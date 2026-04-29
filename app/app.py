@@ -204,6 +204,11 @@ def workout_history_page():
     return render_template("workouts_history.html")
 
 
+@app.route("/workouts/statistics")
+def workout_statistics_page():
+    return render_template("workouts_statistics.html")
+
+
 
 # load data safely
 def load_preset_workouts():
@@ -534,6 +539,199 @@ def calculate_muscle_map(workouts):
     return muscle_map
 
 
+def parse_completed_at(value):
+    if not value:
+        return None
+
+    for date_format in ("%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(str(value), date_format)
+        except ValueError:
+            continue
+    return None
+
+
+def get_stats_start_date(range_key):
+    now = datetime.now()
+    if range_key == "90d":
+        return now - timedelta(days=90)
+    if range_key == "1y":
+        return now - timedelta(days=365)
+    if range_key == "all":
+        return None
+    return now - timedelta(days=30)
+
+
+def get_completed_sets(workout):
+    set_details = workout.get("set_details", [])
+    if isinstance(set_details, list) and set_details:
+        return [
+            set_item for set_item in set_details
+            if isinstance(set_item, dict) and set_item.get("done") is True
+        ]
+
+    if workout.get("completed") is True and isinstance(workout.get("reps"), list):
+        return [
+            {"reps": rep, "kg": 0, "set_type": "working", "done": True}
+            for rep in workout.get("reps", [])
+            if isinstance(rep, int) and rep > 0
+        ]
+
+    return []
+
+
+def add_group_count(group_counts, muscle, set_count):
+    group = muscle_map_group(muscle)
+    if not group:
+        return
+
+    group_counts[group] = group_counts.get(group, 0) + set_count
+
+
+def build_statistics_for_user(history, current_user, range_key):
+    start_date = get_stats_start_date(range_key)
+    last_seven_days = [
+        (datetime.now().date() - timedelta(days=offset))
+        for offset in range(6, -1, -1)
+    ]
+    consistency = {
+        day.isoformat(): {
+            "date": day.isoformat(),
+            "label": day.strftime("%a"),
+            "workouts": 0,
+            "muscles": []
+        }
+        for day in last_seven_days
+    }
+
+    sessions = []
+    group_counts = {}
+    exercise_counts = {}
+    total_sets = 0
+    total_reps = 0
+    total_volume = 0
+    completed_workouts_for_map = []
+
+    for session in history:
+        if session.get("owner") != current_user:
+            continue
+
+        completed_at = parse_completed_at(session.get("completed_at"))
+        if start_date and completed_at and completed_at < start_date:
+            continue
+
+        session_set_count = 0
+        session_volume = 0
+        session_muscles = set()
+        session_workouts = session.get("completed_workout", [])
+
+        for workout in session_workouts:
+            if not isinstance(workout, dict):
+                continue
+
+            completed_sets = get_completed_sets(workout)
+            if not completed_sets:
+                continue
+
+            set_count = len(completed_sets)
+            reps_count = sum(
+                set_item.get("reps", 0)
+                for set_item in completed_sets
+                if isinstance(set_item.get("reps", 0), int)
+            )
+            volume = sum(
+                (set_item.get("kg", 0) or 0) * (set_item.get("reps", 0) or 0)
+                for set_item in completed_sets
+                if isinstance(set_item.get("kg", 0), (int, float)) and isinstance(set_item.get("reps", 0), int)
+            )
+
+            total_sets += set_count
+            total_reps += reps_count
+            total_volume += volume
+            session_set_count += set_count
+            session_volume += volume
+
+            exercise_name = normalize_text(workout.get("workout")) or "Workout"
+            if exercise_name not in exercise_counts:
+                exercise_counts[exercise_name] = {
+                    "name": exercise_name,
+                    "count": 0,
+                    "sets": 0,
+                    "volume": 0
+                }
+            exercise_counts[exercise_name]["count"] += 1
+            exercise_counts[exercise_name]["sets"] += set_count
+            exercise_counts[exercise_name]["volume"] += volume
+
+            completed_workouts_for_map.append(workout)
+            for muscle in normalize_string_list(workout.get("primaryMuscles")):
+                add_group_count(group_counts, muscle, set_count)
+                group = muscle_map_group(muscle)
+                if group:
+                    session_muscles.add(MUSCLE_MAP_LABELS.get(group, group.replace("_", " ").title()))
+
+            for muscle in normalize_string_list(workout.get("secondaryMuscles")):
+                add_group_count(group_counts, muscle, set_count * 0.5)
+                group = muscle_map_group(muscle)
+                if group:
+                    session_muscles.add(MUSCLE_MAP_LABELS.get(group, group.replace("_", " ").title()))
+
+        if session_set_count <= 0:
+            continue
+
+        if completed_at:
+            date_key = completed_at.date().isoformat()
+            if date_key in consistency:
+                consistency[date_key]["workouts"] += 1
+                consistency[date_key]["muscles"] = sorted(set(consistency[date_key]["muscles"]) | session_muscles)
+
+        sessions.append({
+            "id": session.get("id"),
+            "session_name": session.get("session_name") or "Workout",
+            "completed_at": session.get("completed_at", ""),
+            "sets": session_set_count,
+            "volume": session_volume
+        })
+
+    muscle_counts = [
+        {
+            "group": group,
+            "label": MUSCLE_MAP_LABELS.get(group, group.replace("_", " ").title()),
+            "sets": round(count, 1)
+        }
+        for group, count in group_counts.items()
+    ]
+    muscle_counts.sort(key=lambda item: item["sets"], reverse=True)
+
+    total_muscle_sets = sum(item["sets"] for item in muscle_counts)
+    muscle_distribution = [
+        {
+            **item,
+            "percent": round((item["sets"] / total_muscle_sets) * 100) if total_muscle_sets else 0
+        }
+        for item in muscle_counts
+    ]
+
+    main_exercises = list(exercise_counts.values())
+    main_exercises.sort(key=lambda item: (item["count"], item["sets"], item["volume"]), reverse=True)
+
+    return {
+        "summary": {
+            "workouts": len(sessions),
+            "sets": total_sets,
+            "reps": total_reps,
+            "volume": round(total_volume, 1),
+            "duration_minutes": 0
+        },
+        "consistency": list(consistency.values()),
+        "muscle_counts": muscle_counts,
+        "muscle_distribution": muscle_distribution,
+        "muscle_map": calculate_muscle_map(completed_workouts_for_map),
+        "main_exercises": main_exercises[:8],
+        "sessions": sessions
+    }
+
+
 def next_numeric_id(items, floor=9999):
     ids = [
         item.get("id", 0)
@@ -784,6 +982,24 @@ def delete_history_data(history_id):
     return jsonify({
         "status": "success",
         "message": "Workout history deleted"
+    }), 200
+
+
+@app.route("/statistics-data", methods=["GET"])
+@jwt_required()
+def get_statistics_data():
+    current_user = get_jwt_identity()
+    range_key = request.args.get("range", "30d")
+    if range_key not in {"30d", "90d", "1y", "all"}:
+        range_key = "30d"
+
+    history = load_workout_history()
+    statistics = build_statistics_for_user(history, current_user, range_key)
+
+    return jsonify({
+        "status": "success",
+        "message": "Statistics retrieved",
+        "data": statistics
     }), 200
 
 
@@ -1134,6 +1350,23 @@ def start_routine(routine_id):
         "message": "Routine started",
         "data": imported_workouts
     }), 201
+
+
+@app.route("/start-empty-workout", methods=["POST"])
+@jwt_required()
+def start_empty_workout():
+    current_user = get_jwt_identity()
+    workouts = load_workout_sections()
+    removed_count = sum(1 for workout in workouts if workout.get("owner") == current_user)
+    remaining_workouts = [workout for workout in workouts if workout.get("owner") != current_user]
+    save_workout_sections(remaining_workouts)
+
+    return jsonify({
+        "status": "success",
+        "message": "Empty workout started",
+        "removed_count": removed_count
+    }), 200
+
 
 # GET all workouts
 

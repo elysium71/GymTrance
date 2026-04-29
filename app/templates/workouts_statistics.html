@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Statistics - GymTrance</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    </head>
+    <body>
+        <div class="page-shell">
+            <button type="button" class="back-page-btn" data-back-url="/workouts">Back</button>
+
+            <header class="hero">
+                <div class="hero-copy">
+                    <p class="eyebrow">Profile</p>
+                    <h1>Statistics</h1>
+                    <p class="hero-text">
+                        See your training consistency, muscle volume, distribution, and main exercises.
+                    </p>
+                </div>
+
+                <div class="hero-side">
+                    <button type="button" id="logout-btn" class="ghost-btn hero-logout">Logout</button>
+                </div>
+            </header>
+
+            <main class="dashboard">
+                <section class="panel content-panel statistics-panel">
+                    <div id="message-box" class="message-box"></div>
+
+                    <div class="section-header workout-header">
+                        <div>
+                            <p class="section-label">Gym Performance</p>
+                            <h2>Training Overview</h2>
+                        </div>
+                        <label class="stats-range-control">
+                            <span>Range</span>
+                            <select id="stats-range-select">
+                                <option value="30d">Last 30 Days</option>
+                                <option value="90d">Last 3 Months</option>
+                                <option value="1y">Last Year</option>
+                                <option value="all">All Time</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div id="stats-summary-grid" class="stats-summary-grid"></div>
+
+                    <div class="stats-grid">
+                        <article class="stats-card">
+                            <div class="stats-card-heading">
+                                <p class="section-label">Last 7 Days</p>
+                                <h3>Consistency</h3>
+                            </div>
+                            <div id="stats-consistency" class="stats-consistency"></div>
+                        </article>
+
+                        <article class="stats-card">
+                            <div class="stats-card-heading">
+                                <p class="section-label">Volume</p>
+                                <h3>Set Count Per Muscle</h3>
+                            </div>
+                            <div id="stats-muscle-bars" class="stats-bar-list"></div>
+                        </article>
+
+                        <article class="stats-card">
+                            <div class="stats-card-heading">
+                                <p class="section-label">Distribution</p>
+                                <h3>Muscle Distribution</h3>
+                            </div>
+                            <div id="stats-distribution-chart" class="stats-donut"></div>
+                        </article>
+
+                        <article class="stats-card">
+                            <div class="stats-card-heading">
+                                <p class="section-label">Body</p>
+                                <h3>Muscles Trained</h3>
+                            </div>
+                            <div class="muscle-map-card stats-muscle-map-card">
+                                <div id="stats-muscle-map-body" class="muscle-map-body"></div>
+                            </div>
+                        </article>
+                    </div>
+
+                    <article class="stats-card">
+                        <div class="stats-card-heading">
+                            <p class="section-label">Main Exercises</p>
+                            <h3>Most Logged Exercises</h3>
+                        </div>
+                        <div id="stats-main-exercises" class="stats-exercise-list"></div>
+                    </article>
+                </section>
+            </main>
+        </div>
+
+        <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    </body>
+</html>
