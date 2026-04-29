@@ -16,6 +16,10 @@ const removeSetActionButton = document.querySelector('#remove-set-action-btn');
 const workoutActionModalOverlay = document.querySelector('#workout-action-modal-overlay');
 const closeWorkoutActionModalButton = document.querySelector('#close-workout-action-modal-btn');
 const deleteWorkoutActionButton = document.querySelector('#delete-workout-action-btn');
+const muscleSplitModalOverlay = document.querySelector('#muscle-split-modal-overlay');
+const closeMuscleSplitButton = document.querySelector('#close-muscle-split-btn');
+const muscleSplitList = document.querySelector('#muscle-split-list');
+const muscleMapBody = document.querySelector('#muscle-map-body');
 
 const openPresetModalButton = document.querySelector('#open-preset-modal-btn');
 const closePresetModalButton = document.querySelector('#close-preset-modal-btn');
@@ -389,6 +393,116 @@ function closeWorkoutDetailModal() {
     workoutDetailBody.innerHTML = '';
 }
 
+function renderMuscleMap(muscleMap) {
+    if (!muscleMapBody) {
+        return;
+    }
+
+    const levels = {};
+    if (Array.isArray(muscleMap)) {
+        muscleMap.forEach(item => {
+            if (item && item.group) {
+                levels[item.group] = item.level || 'none';
+            }
+        });
+    }
+
+    const mapClass = group => `muscle-map-part is-${levels[group] || 'none'}`;
+
+    muscleMapBody.innerHTML = `
+        <div class="muscle-map-figure is-front">
+            <span class="muscle-map-label">Front</span>
+            <svg class="muscle-map-svg" viewBox="0 0 220 360" role="img" aria-label="Front muscle map">
+                <circle class="muscle-map-base" cx="110" cy="32" r="22"></circle>
+                <path class="${mapClass('neck')}" d="M95 54h30l-5 25H100z"></path>
+                <path class="${mapClass('shoulders')}" d="M52 82c20-20 37-24 58-20 21-4 38 0 58 20l-15 30c-13-18-25-24-43-25-18 1-30 7-43 25z"></path>
+                <path class="${mapClass('chest')}" d="M75 92c10-10 24-13 35-7v52H73c-9-17-8-33 2-45z"></path>
+                <path class="${mapClass('chest')}" d="M110 85c11-6 25-3 35 7 10 12 11 28 2 45h-37z"></path>
+                <path class="${mapClass('abs')}" d="M82 140h56l10 74-38 31-38-31z"></path>
+                <path class="${mapClass('biceps')}" d="M48 116c12 1 21 7 25 18l-15 70c-14-5-20-17-18-33z"></path>
+                <path class="${mapClass('biceps')}" d="M172 116c-12 1-21 7-25 18l15 70c14-5 20-17 18-33z"></path>
+                <path class="${mapClass('forearms')}" d="M38 196c11 3 18 9 20 20l-11 66c-13-2-21-12-20-27z"></path>
+                <path class="${mapClass('forearms')}" d="M182 196c-11 3-18 9-20 20l11 66c13-2 21-12 20-27z"></path>
+                <path class="${mapClass('hips')}" d="M73 216h74l-11 44H84z"></path>
+                <path class="${mapClass('quads')}" d="M82 260h45l-10 75c-2 14-12 21-25 20l-12-67z"></path>
+                <path class="${mapClass('quads')}" d="M138 260H93l10 75c2 14 12 21 25 20l12-67z"></path>
+                <path class="${mapClass('calves')}" d="M88 330c13 5 21 5 31 0l-4 25c-8 8-17 8-25 0z"></path>
+                <path class="${mapClass('calves')}" d="M132 330c-13 5-21 5-31 0l4 25c8 8 17 8 25 0z"></path>
+            </svg>
+        </div>
+        <div class="muscle-map-figure is-back">
+            <span class="muscle-map-label">Back</span>
+            <svg class="muscle-map-svg" viewBox="0 0 220 360" role="img" aria-label="Back muscle map">
+                <circle class="muscle-map-base" cx="110" cy="32" r="22"></circle>
+                <path class="${mapClass('neck')}" d="M95 54h30l-5 28H100z"></path>
+                <path class="${mapClass('shoulders')}" d="M52 82c21-19 39-24 58-20 19-4 37 1 58 20l-15 31c-12-16-25-23-43-24-18 1-31 8-43 24z"></path>
+                <path class="${mapClass('upper_back')}" d="M70 96c16-15 28-20 40-15v93H62c-6-34-3-60 8-78z"></path>
+                <path class="${mapClass('upper_back')}" d="M110 81c12-5 24 0 40 15 11 18 14 44 8 78h-48z"></path>
+                <path class="${mapClass('triceps')}" d="M48 116c13 2 22 9 25 21l-13 66c-14-3-22-15-20-32z"></path>
+                <path class="${mapClass('triceps')}" d="M172 116c-13 2-22 9-25 21l13 66c14-3 22-15 20-32z"></path>
+                <path class="${mapClass('forearms')}" d="M38 196c11 3 18 9 20 20l-11 66c-13-2-21-12-20-27z"></path>
+                <path class="${mapClass('forearms')}" d="M182 196c-11 3-18 9-20 20l11 66c13-2 21-12 20-27z"></path>
+                <path class="${mapClass('lower_back')}" d="M75 170h70l-8 55-27 23-27-23z"></path>
+                <path class="${mapClass('glutes')}" d="M77 225c18-8 32-5 33 15-3 20-15 31-36 29-9-16-8-31 3-44z"></path>
+                <path class="${mapClass('glutes')}" d="M143 225c-18-8-32-5-33 15 3 20 15 31 36 29 9-16 8-31-3-44z"></path>
+                <path class="${mapClass('hamstrings')}" d="M82 266h45l-10 69c-2 14-12 21-25 20l-12-64z"></path>
+                <path class="${mapClass('hamstrings')}" d="M138 266H93l10 69c2 14 12 21 25 20l12-64z"></path>
+                <path class="${mapClass('calves')}" d="M88 330c13 5 21 5 31 0l-4 25c-8 8-17 8-25 0z"></path>
+                <path class="${mapClass('calves')}" d="M132 330c-13 5-21 5-31 0l4 25c8 8 17 8 25 0z"></path>
+            </svg>
+        </div>
+    `;
+}
+
+function openMuscleSplitModal(muscleSplit, muscleMap = []) {
+    if (!muscleSplitModalOverlay || !muscleSplitList) {
+        return;
+    }
+
+    if (!Array.isArray(muscleSplit) || muscleSplit.length === 0) {
+        muscleSplitList.innerHTML = '<p class="empty-state">No muscle split available for this workout.</p>';
+    } else {
+        muscleSplitList.innerHTML = muscleSplit.map((item, index) => {
+            const percent = Math.max(0, Math.min(100, Number(item.percent) || 0));
+            return `
+                <div class="muscle-split-row${index >= 5 ? ' is-extra' : ''}"${index >= 5 ? ' hidden' : ''}>
+                    <div class="muscle-split-row-header">
+                        <span>${escapeHtml(formatTitleCase(item.muscle))}</span>
+                        <strong>${percent}%</strong>
+                    </div>
+                    <div class="muscle-split-track" aria-hidden="true">
+                        <span style="width: ${percent}%"></span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        if (muscleSplit.length > 5) {
+            muscleSplitList.insertAdjacentHTML('beforeend', '<button type="button" class="secondary-btn muscle-split-more-btn">Show More</button>');
+            const showMoreButton = muscleSplitList.querySelector('.muscle-split-more-btn');
+            showMoreButton.addEventListener('click', function () {
+                const isExpanded = showMoreButton.dataset.expanded === 'true';
+                muscleSplitList.querySelectorAll('.muscle-split-row.is-extra').forEach(row => {
+                    row.hidden = isExpanded;
+                });
+                showMoreButton.dataset.expanded = isExpanded ? 'false' : 'true';
+                showMoreButton.textContent = isExpanded ? 'Show More' : 'Show Less';
+            });
+        }
+    }
+
+    renderMuscleMap(muscleMap);
+    muscleSplitModalOverlay.style.display = 'flex';
+}
+
+function closeMuscleSplitModal() {
+    if (!muscleSplitModalOverlay) {
+        return;
+    }
+
+    muscleSplitModalOverlay.style.display = 'none';
+}
+
 function renderWorkouts(workouts) {
     if (!workoutList) {
         return;
@@ -665,6 +779,7 @@ function finishWorkout() {
     .then(data => {
         if (data.status === 'success') {
             showMessage('Workout finished successfully!', 'success');
+            openMuscleSplitModal(data.muscle_split || [], data.muscle_map || []);
             loadWorkouts();
         } else {
             showMessage(data.message || 'Failed to finish workout.', 'error');
@@ -2069,6 +2184,20 @@ if (workoutDetailModalOverlay) {
     workoutDetailModalOverlay.addEventListener('click', function (event) {
         if (event.target === workoutDetailModalOverlay) {
             closeWorkoutDetailModal();
+        }
+    });
+}
+
+if (closeMuscleSplitButton) {
+    closeMuscleSplitButton.addEventListener('click', function () {
+        closeMuscleSplitModal();
+    });
+}
+
+if (muscleSplitModalOverlay) {
+    muscleSplitModalOverlay.addEventListener('click', function (event) {
+        if (event.target === muscleSplitModalOverlay) {
+            closeMuscleSplitModal();
         }
     });
 }

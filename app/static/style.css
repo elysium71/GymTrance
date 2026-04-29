@@ -2195,3 +2195,143 @@ select:focus,
         grid-template-columns: 1fr;
     }
 }
+
+.muscle-split-modal {
+    width: min(680px, 100%);
+    padding-bottom: 24px;
+}
+
+.muscle-split-copy {
+    margin: -6px 0 18px;
+    color: var(--muted);
+}
+
+.muscle-split-list {
+    display: grid;
+    gap: 14px;
+}
+
+.muscle-split-more-btn {
+    justify-self: center;
+    width: auto;
+    min-width: 150px;
+}
+
+.muscle-split-row {
+    padding: 14px;
+    border: 1px solid rgba(190, 205, 224, 0.12);
+    border-radius: 14px;
+    background: #101720;
+}
+
+.muscle-split-row-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 10px;
+    color: var(--text);
+    font-weight: 800;
+}
+
+.muscle-split-row-header strong {
+    color: #ffc2a2;
+}
+
+.muscle-split-track {
+    height: 10px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(190, 205, 224, 0.12);
+}
+
+.muscle-split-track span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--accent), #ffc2a2);
+}
+
+.muscle-map-card {
+    margin: 0 0 18px;
+    padding: 18px;
+    border: 1px solid rgba(190, 205, 224, 0.16);
+    border-radius: 16px;
+    background: #f8fafc;
+}
+
+.muscle-map-body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.muscle-map-figure {
+    position: relative;
+    min-height: 0;
+    padding: 28px 4px 4px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+}
+
+.muscle-map-label {
+    position: absolute;
+    top: 0;
+    left: 6px;
+    color: #6a7482;
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.muscle-map-svg {
+    display: block;
+    width: 100%;
+    max-height: 330px;
+    margin: 0 auto;
+}
+
+.muscle-map-base {
+    fill: #c8d0da;
+    stroke: #8b96a5;
+    stroke-width: 2;
+}
+
+.muscle-map-part {
+    fill: #d4dbe4;
+    stroke: #ffffff;
+    stroke-width: 3;
+    stroke-linejoin: round;
+    transition: fill 0.18s ease, filter 0.18s ease, opacity 0.18s ease;
+}
+
+.muscle-map-part.is-none {
+    opacity: 0.62;
+}
+
+.muscle-map-part.is-secondary {
+    fill: #8fcaff;
+    filter: drop-shadow(0 4px 8px rgba(47, 128, 222, 0.16));
+}
+
+.muscle-map-part.is-primary {
+    fill: #2f80de;
+    filter: drop-shadow(0 6px 10px rgba(47, 128, 222, 0.3));
+}
+
+.muscle-map-svg path:nth-of-type(4n) {
+    fill-opacity: 0.92;
+}
+
+.muscle-map-svg path:nth-of-type(4n + 1) {
+    fill-opacity: 0.84;
+}
+
+@media (max-width: 560px) {
+    .muscle-map-body {
+        grid-template-columns: 1fr;
+    }
+}

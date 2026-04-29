@@ -385,6 +385,139 @@ def enrich_workout_record(workout):
     return enriched_workout
 
 
+def calculate_muscle_split(workouts):
+    muscle_scores = {}
+
+    for workout in workouts:
+        if not isinstance(workout, dict):
+            continue
+
+        set_details = workout.get("set_details", [])
+        set_count = len(set_details) if isinstance(set_details, list) and set_details else workout.get("sets", 1)
+        if not isinstance(set_count, int) or set_count <= 0:
+            set_count = 1
+
+        primary_muscles = normalize_string_list(workout.get("primaryMuscles"))
+        secondary_muscles = normalize_string_list(workout.get("secondaryMuscles"))
+
+        for muscle in primary_muscles:
+            muscle_scores[muscle] = muscle_scores.get(muscle, 0) + set_count
+
+        for muscle in secondary_muscles:
+            muscle_scores[muscle] = muscle_scores.get(muscle, 0) + (set_count * 0.5)
+
+    total_score = sum(muscle_scores.values())
+    if total_score <= 0:
+        return []
+
+    muscle_split = [
+        {
+            "muscle": muscle,
+            "percent": round((score / total_score) * 100)
+        }
+        for muscle, score in muscle_scores.items()
+    ]
+    muscle_split.sort(key=lambda item: item["percent"], reverse=True)
+
+    rounding_gap = 100 - sum(item["percent"] for item in muscle_split)
+    if muscle_split and rounding_gap:
+        muscle_split[0]["percent"] += rounding_gap
+
+    return muscle_split
+
+
+MUSCLE_MAP_ALIASES = {
+    "chest": {"chest", "pectorals", "upper chest"},
+    "shoulders": {"shoulders", "delts", "deltoids", "rear deltoids", "rotator cuff"},
+    "biceps": {"biceps", "brachialis"},
+    "triceps": {"triceps"},
+    "forearms": {"forearms", "lower arms", "wrists", "wrist extensors", "wrist flexors", "grip muscles", "hands"},
+    "abs": {"abs", "abdominals", "core", "lower abs", "obliques", "waist"},
+    "upper_back": {"back", "upper back", "lats", "latissimus dorsi", "rhomboids", "trapezius", "traps", "levator scapulae"},
+    "lower_back": {"lower back", "spine"},
+    "glutes": {"glutes"},
+    "quads": {"quadriceps", "quads", "upper legs"},
+    "hamstrings": {"hamstrings"},
+    "calves": {"calves", "soleus", "lower legs", "shins", "ankles", "ankle stabilizers", "feet"},
+    "hips": {"hip flexors", "adductors", "abductors", "inner thighs", "groin"},
+    "neck": {"neck", "sternocleidomastoid"},
+}
+
+MUSCLE_MAP_LABELS = {
+    "chest": "Chest",
+    "shoulders": "Shoulders",
+    "biceps": "Biceps",
+    "triceps": "Triceps",
+    "forearms": "Forearms",
+    "abs": "Abs",
+    "upper_back": "Upper Back",
+    "lower_back": "Lower Back",
+    "glutes": "Glutes",
+    "quads": "Quads",
+    "hamstrings": "Hamstrings",
+    "calves": "Calves",
+    "hips": "Hips",
+    "neck": "Neck",
+}
+
+
+def muscle_map_group(muscle):
+    normalized_muscle = normalize_text(muscle).lower()
+    for group, aliases in MUSCLE_MAP_ALIASES.items():
+        if normalized_muscle in aliases:
+            return group
+    return normalized_muscle.replace(" ", "_") if normalized_muscle else None
+
+
+def calculate_muscle_map(workouts):
+    group_hits = {}
+
+    for workout in workouts:
+        if not isinstance(workout, dict):
+            continue
+
+        primary_groups = {
+            muscle_map_group(muscle)
+            for muscle in normalize_string_list(workout.get("primaryMuscles"))
+        }
+        secondary_groups = {
+            muscle_map_group(muscle)
+            for muscle in normalize_string_list(workout.get("secondaryMuscles"))
+        }
+
+        for group in primary_groups:
+            if not group:
+                continue
+            group_hits.setdefault(group, {"primary": 0, "secondary": 0})
+            group_hits[group]["primary"] += 1
+
+        for group in secondary_groups:
+            if not group:
+                continue
+            group_hits.setdefault(group, {"primary": 0, "secondary": 0})
+            group_hits[group]["secondary"] += 1
+
+    muscle_map = []
+    for group, hits in group_hits.items():
+        if hits["primary"] > 0 or hits["secondary"] >= 2:
+            level = "primary"
+        elif hits["secondary"] == 1:
+            level = "secondary"
+        else:
+            level = "none"
+
+        muscle_map.append({
+            "group": group,
+            "label": MUSCLE_MAP_LABELS.get(group, group.replace("_", " ").title()),
+            "level": level,
+            "primary_hits": hits["primary"],
+            "secondary_hits": hits["secondary"]
+        })
+
+    muscle_map.sort(key=lambda item: (item["level"] != "primary", item["label"]))
+    return muscle_map
+
+
 def next_numeric_id(items, floor=9999):
     ids = [
         item.get("id", 0)
@@ -547,6 +680,8 @@ def get_history_data():
         enriched_item["session_name"] = session_name or "Workout"
         enriched_item["completed_at"] = item.get("completed_at", "")
         enriched_item["completed_workout"] = completed_workouts
+        enriched_item["muscle_split"] = item.get("muscle_split") or calculate_muscle_split(completed_workouts)
+        enriched_item["muscle_map"] = item.get("muscle_map") or calculate_muscle_map(completed_workouts)
         user_history.append(enriched_item)
 
     return jsonify({
@@ -598,6 +733,8 @@ def update_history_data(history_id):
         workout["sets"] = len(cleaned_sets)
         workout["reps"] = [item["reps"] for item in cleaned_sets]
 
+    session_to_update["muscle_split"] = calculate_muscle_split(session_to_update.get("completed_workout", []))
+    session_to_update["muscle_map"] = calculate_muscle_map(session_to_update.get("completed_workout", []))
     save_workout_history(history)
 
     return jsonify({
@@ -1087,12 +1224,17 @@ def finish_workout():
     if not session_name:
         session_name = user_workouts[0].get("workout") if len(user_workouts) == 1 else "Workout"
 
+    muscle_split = calculate_muscle_split(user_workouts)
+    muscle_map = calculate_muscle_map(user_workouts)
+
     workout_history.append({
         "id": next_numeric_id(workout_history),
         "owner": current_user,
         "session_name": session_name,
         "completed_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "completed_workout": user_workouts
+        "completed_workout": user_workouts,
+        "muscle_split": muscle_split,
+        "muscle_map": muscle_map
     })
     save_workout_history(workout_history)
 
@@ -1101,7 +1243,9 @@ def finish_workout():
 
     return jsonify({
         "status": "success",
-        "message": "Workout finished successfully"
+        "message": "Workout finished successfully",
+        "muscle_split": muscle_split,
+        "muscle_map": muscle_map
     }), 200
 
 
