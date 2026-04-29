@@ -61,6 +61,7 @@ let savedRoutines = [];
 let savedRoutineFolders = [];
 const openRoutineFolderIds = new Set(['unfiled']);
 let editingRoutineId = null;
+let routineBuilderFolderId = null;
 
 const SET_TYPE_META = {
     warmup: { code: 'W', label: 'Warm Up' },
@@ -858,13 +859,14 @@ function closeStartWorkoutModal() {
     }
 }
 
-function openRoutineBuilderModal(routine = null) {
+function openRoutineBuilderModal(routine = null, folderId = null) {
     if (!routineBuilderModalOverlay) {
         return;
     }
 
     closeStartWorkoutModal();
     editingRoutineId = routine ? routine.id : null;
+    routineBuilderFolderId = routine ? (routine.folder_id || null) : folderId;
 
     if (routineNameInput) {
         routineNameInput.value = routine ? (routine.name || '') : '';
@@ -889,6 +891,7 @@ function closeRoutineBuilderModal() {
         routineBuilderModalOverlay.style.display = 'none';
     }
     editingRoutineId = null;
+    routineBuilderFolderId = null;
 }
 
 function filterRoutinePresets() {
@@ -971,6 +974,18 @@ function getFilteredRoutines() {
     });
 }
 
+function closeRoutineMenus(exceptMenu = null) {
+    if (!routineList) {
+        return;
+    }
+
+    routineList.querySelectorAll('.routine-menu').forEach(menu => {
+        if (menu !== exceptMenu) {
+            menu.hidden = true;
+        }
+    });
+}
+
 function renderRoutines(routines) {
     if (!routineList) {
         return;
@@ -1005,11 +1020,25 @@ function renderRoutines(routines) {
 
         return `
         <section class="routine-folder-group${isOpen ? ' is-open' : ''}" data-folder-id="${folderKey}">
-            <button type="button" class="routine-folder-heading" data-folder-id="${folderKey}" aria-expanded="${isOpen ? 'true' : 'false'}">
-                <span class="routine-folder-arrow">${isOpen ? '-' : '+'}</span>
-                <h3>${escapeHtml(formatTitleCase(group.name))}</h3>
-                <span>${group.routines.length} routine${group.routines.length === 1 ? '' : 's'}</span>
-            </button>
+            <div class="routine-folder-heading" data-folder-id="${folderKey}">
+                <button type="button" class="routine-folder-toggle" data-folder-id="${folderKey}" aria-expanded="${isOpen ? 'true' : 'false'}">
+                    <span class="routine-folder-arrow">${isOpen ? '-' : '+'}</span>
+                    <h3>${escapeHtml(formatTitleCase(group.name))}</h3>
+                    <span>${group.routines.length} routine${group.routines.length === 1 ? '' : 's'}</span>
+                </button>
+                ${group.id !== null ? `
+                    <div class="routine-menu-wrap">
+                        <button type="button" class="routine-menu-btn routine-folder-menu-trigger" data-folder-id="${folderKey}" aria-label="Folder options">&#8942;</button>
+                        <div class="routine-menu routine-folder-menu" data-folder-id="${folderKey}" hidden>
+                            <button type="button" class="routine-menu-action routine-folder-menu-action" data-action="add-routine" data-folder-id="${folderKey}">Add New Routine</button>
+                            <button type="button" class="routine-menu-action routine-folder-menu-action" data-action="rename" data-folder-id="${folderKey}">Rename Folder</button>
+                            <button type="button" class="routine-menu-action routine-folder-menu-action" data-action="move-up" data-folder-id="${folderKey}">Move Up</button>
+                            <button type="button" class="routine-menu-action routine-folder-menu-action" data-action="move-down" data-folder-id="${folderKey}">Move Down</button>
+                            <button type="button" class="routine-menu-action routine-folder-menu-action is-danger" data-action="delete" data-folder-id="${folderKey}">Delete Folder</button>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
             <div class="routine-folder-list" ${isOpen ? '' : 'hidden'}>
                 ${group.routines.map(routine => {
         const exercises = Array.isArray(routine.exercises) ? routine.exercises : [];
@@ -1052,7 +1081,7 @@ function renderRoutines(routines) {
     `;
     }).join('');
 
-    routineList.querySelectorAll('.routine-folder-heading').forEach(button => {
+    routineList.querySelectorAll('.routine-folder-toggle').forEach(button => {
         button.addEventListener('click', function () {
             const folderId = button.dataset.folderId;
             if (openRoutineFolderIds.has(folderId)) {
@@ -1064,28 +1093,44 @@ function renderRoutines(routines) {
         });
     });
 
+    routineList.querySelectorAll('.routine-folder-menu-trigger').forEach(button => {
+        button.addEventListener('click', function (event) {
+            event.stopPropagation();
+            const menu = routineList.querySelector(`.routine-folder-menu[data-folder-id="${button.dataset.folderId}"]`);
+            if (menu) {
+                closeRoutineMenus(menu);
+                menu.hidden = !menu.hidden;
+            }
+        });
+    });
+
+    routineList.querySelectorAll('.routine-folder-menu-action').forEach(button => {
+        button.addEventListener('click', function (event) {
+            event.stopPropagation();
+            handleFolderMenuAction(button.dataset.action, Number(button.dataset.folderId));
+        });
+    });
+
     routineList.querySelectorAll('.start-routine-btn').forEach(button => {
         button.addEventListener('click', function () {
             startRoutine(button.dataset.id);
         });
     });
 
-    routineList.querySelectorAll('.routine-menu-btn').forEach(button => {
-        button.addEventListener('click', function () {
+    routineList.querySelectorAll('.routine-menu-btn:not(.routine-folder-menu-trigger)').forEach(button => {
+        button.addEventListener('click', function (event) {
+            event.stopPropagation();
             const menu = routineList.querySelector(`.routine-menu[data-id="${button.dataset.id}"]`);
-            routineList.querySelectorAll('.routine-menu').forEach(item => {
-                if (item !== menu) {
-                    item.hidden = true;
-                }
-            });
             if (menu) {
+                closeRoutineMenus(menu);
                 menu.hidden = !menu.hidden;
             }
         });
     });
 
     routineList.querySelectorAll('.routine-menu-action').forEach(button => {
-        button.addEventListener('click', function () {
+        button.addEventListener('click', function (event) {
+            event.stopPropagation();
             handleRoutineMenuAction(button.dataset.action, Number(button.dataset.id));
         });
     });
@@ -1203,6 +1248,109 @@ function updateRoutineFolder(routineId, folderId) {
     });
 }
 
+function handleFolderMenuAction(action, folderId) {
+    const folder = savedRoutineFolders.find(item => item.id === folderId);
+
+    if (!folder) {
+        showMessage('Folder not found.', 'error');
+        return;
+    }
+
+    if (action === 'add-routine') {
+        openRoutineBuilderModal(null, folderId);
+        return;
+    }
+
+    if (action === 'rename') {
+        const name = window.prompt('Folder name', folder.name || '');
+        if (name && name.trim()) {
+            updateRoutineFolderDetails(folderId, { name: name.trim() });
+        }
+        return;
+    }
+
+    if (action === 'move-up') {
+        updateRoutineFolderDetails(folderId, { direction: 'up' });
+        return;
+    }
+
+    if (action === 'move-down') {
+        updateRoutineFolderDetails(folderId, { direction: 'down' });
+        return;
+    }
+
+    if (action === 'delete') {
+        deleteRoutineFolder(folderId);
+    }
+}
+
+function updateRoutineFolderDetails(folderId, updates) {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch(`http://127.0.0.1:5000/routine-folders/${folderId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updates)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage('Folder updated.', 'success');
+            openRoutineFolderIds.add(String(folderId));
+            loadRoutines();
+        } else {
+            showMessage(data.message || 'Failed to update folder.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Update folder error:', error);
+        showMessage('Failed to update folder.', 'error');
+    });
+}
+
+function deleteRoutineFolder(folderId) {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    if (!window.confirm('Delete this folder? Routines inside will move to Unfiled.')) {
+        return;
+    }
+
+    fetch(`http://127.0.0.1:5000/routine-folders/${folderId}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage('Folder deleted.', 'success');
+            openRoutineFolderIds.delete(String(folderId));
+            openRoutineFolderIds.add('unfiled');
+            loadRoutines();
+        } else {
+            showMessage(data.message || 'Failed to delete folder.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Delete folder error:', error);
+        showMessage('Failed to delete folder.', 'error');
+    });
+}
+
 function handleRoutineMenuAction(action, routineId) {
     const routine = savedRoutines.find(item => item.id === routineId);
 
@@ -1316,6 +1464,7 @@ function saveRoutine() {
     const currentRoutine = editingRoutineId
         ? savedRoutines.find(item => item.id === editingRoutineId)
         : null;
+    const folderId = currentRoutine ? (currentRoutine.folder_id || null) : routineBuilderFolderId;
 
     fetch(requestUrl, {
         method: requestMethod,
@@ -1326,7 +1475,7 @@ function saveRoutine() {
         body: JSON.stringify({
             name,
             exercises,
-            folder_id: currentRoutine ? (currentRoutine.folder_id || null) : null
+            folder_id: folderId
         })
     })
     .then(response => response.json())

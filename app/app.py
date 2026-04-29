@@ -654,6 +654,7 @@ def get_routine_folders():
     current_user = get_jwt_identity()
     folders = load_routine_folders()
     user_folders = [folder for folder in folders if folder.get("owner") == current_user]
+    user_folders.sort(key=lambda folder: (folder.get("order", folder.get("id", 0)), folder.get("id", 0)))
 
     return jsonify({
         "status": "success",
@@ -676,10 +677,16 @@ def create_routine_folder():
 
     current_user = get_jwt_identity()
     folders = load_routine_folders()
+    user_orders = [
+        folder.get("order", 0)
+        for folder in folders
+        if folder.get("owner") == current_user and isinstance(folder.get("order", 0), int)
+    ]
     folder = {
         "id": next_numeric_id(folders),
         "owner": current_user,
-        "name": name
+        "name": name,
+        "order": max(user_orders, default=0) + 1
     }
 
     folders.append(folder)
@@ -690,6 +697,93 @@ def create_routine_folder():
         "message": "Routine folder saved",
         "data": folder
     }), 201
+
+
+@app.route("/routine-folders/<int:folder_id>", methods=["PUT"])
+@jwt_required()
+def update_routine_folder(folder_id):
+    data = request.get_json(silent=True)
+
+    if not data:
+        return jsonify({"status": "error", "message": "No data provided"}), 400
+
+    current_user = get_jwt_identity()
+    folders = load_routine_folders()
+    folder_to_update = None
+
+    for folder in folders:
+        if folder.get("id") == folder_id:
+            if folder.get("owner") != current_user:
+                return jsonify({"status": "error", "message": "You are not allowed to update this folder."}), 403
+            folder_to_update = folder
+            break
+
+    if not folder_to_update:
+        return jsonify({"status": "error", "message": "Folder not found"}), 404
+
+    if "name" in data:
+        name = normalize_text(data.get("name"))
+        if not name:
+            return jsonify({"status": "error", "message": "Folder name is required"}), 400
+        folder_to_update["name"] = name
+
+    if "direction" in data:
+        direction = data.get("direction")
+        if direction not in {"up", "down"}:
+            return jsonify({"status": "error", "message": "Invalid folder direction"}), 400
+
+        user_folders = [folder for folder in folders if folder.get("owner") == current_user]
+        user_folders.sort(key=lambda folder: (folder.get("order", folder.get("id", 0)), folder.get("id", 0)))
+        for index, folder in enumerate(user_folders):
+            folder["order"] = index + 1
+
+        current_index = user_folders.index(folder_to_update)
+        swap_index = current_index - 1 if direction == "up" else current_index + 1
+        if 0 <= swap_index < len(user_folders):
+            user_folders[current_index]["order"], user_folders[swap_index]["order"] = (
+                user_folders[swap_index]["order"],
+                user_folders[current_index]["order"]
+            )
+
+    save_routine_folders(folders)
+
+    return jsonify({
+        "status": "success",
+        "message": "Routine folder updated",
+        "data": folder_to_update
+    }), 200
+
+
+@app.route("/routine-folders/<int:folder_id>", methods=["DELETE"])
+@jwt_required()
+def delete_routine_folder(folder_id):
+    current_user = get_jwt_identity()
+    folders = load_routine_folders()
+    folder_to_delete = None
+
+    for folder in folders:
+        if folder.get("id") == folder_id:
+            if folder.get("owner") != current_user:
+                return jsonify({"status": "error", "message": "You are not allowed to delete this folder."}), 403
+            folder_to_delete = folder
+            break
+
+    if not folder_to_delete:
+        return jsonify({"status": "error", "message": "Folder not found"}), 404
+
+    folders.remove(folder_to_delete)
+    save_routine_folders(folders)
+
+    routines = load_routines()
+    for routine in routines:
+        if routine.get("owner") == current_user and routine.get("folder_id") == folder_id:
+            routine["folder_id"] = None
+    save_routines(routines)
+
+    return jsonify({
+        "status": "success",
+        "message": "Routine folder deleted"
+    }), 200
 
 
 @app.route("/routines/<int:routine_id>", methods=["PUT"])

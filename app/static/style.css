@@ -680,15 +680,27 @@ button:disabled:hover {
 
 .routine-folder-heading {
     display: grid;
-    grid-template-columns: 32px minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
     width: 100%;
-    text-align: left;
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.025);
     border: 1px solid rgba(190, 205, 224, 0.1);
+    color: var(--text);
+}
+
+.routine-folder-toggle {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 0;
+    text-align: left;
+    background: transparent;
+    border: 0;
     color: var(--text);
 }
 
@@ -766,7 +778,8 @@ button:disabled:hover {
     justify-self: end;
 }
 
-.routine-menu-btn {
+.routine-menu-btn,
+.routine-folder-menu-trigger {
     width: 42px;
     min-width: 42px;
     height: 42px;
