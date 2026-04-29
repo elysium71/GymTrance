@@ -758,6 +758,59 @@ button:disabled:hover {
     display: grid;
     gap: 10px;
     justify-items: end;
+    position: relative;
+}
+
+.routine-menu-wrap {
+    position: relative;
+    justify-self: end;
+}
+
+.routine-menu-btn {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    padding: 0;
+    border-radius: 10px;
+    background: #1b2531;
+    border: 1px solid rgba(190, 205, 224, 0.12);
+    color: var(--text);
+    font-size: 1.25rem;
+}
+
+.routine-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 5;
+    display: grid;
+    min-width: 150px;
+    padding: 8px;
+    border-radius: 12px;
+    background: #101720;
+    border: 1px solid rgba(190, 205, 224, 0.14);
+    box-shadow: var(--shadow);
+}
+
+.routine-menu[hidden] {
+    display: none;
+}
+
+.routine-menu-action {
+    padding: 10px 12px;
+    border-radius: 8px;
+    text-align: left;
+    background: transparent;
+    color: var(--text);
+    border: 0;
+}
+
+.routine-menu-action:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.routine-menu-action.is-danger {
+    color: #ffc4ca;
 }
 
 .routine-folder-select {

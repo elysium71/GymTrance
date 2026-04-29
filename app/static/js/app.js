@@ -60,6 +60,7 @@ let activeWorkoutActionId = null;
 let savedRoutines = [];
 let savedRoutineFolders = [];
 const openRoutineFolderIds = new Set(['unfiled']);
+let editingRoutineId = null;
 
 const SET_TYPE_META = {
     warmup: { code: 'W', label: 'Warm Up' },
@@ -857,12 +858,26 @@ function closeStartWorkoutModal() {
     }
 }
 
-function openRoutineBuilderModal() {
+function openRoutineBuilderModal(routine = null) {
     if (!routineBuilderModalOverlay) {
         return;
     }
 
     closeStartWorkoutModal();
+    editingRoutineId = routine ? routine.id : null;
+
+    if (routineNameInput) {
+        routineNameInput.value = routine ? (routine.name || '') : '';
+    }
+    if (routineExerciseList) {
+        routineExerciseList.innerHTML = '';
+        if (routine && Array.isArray(routine.exercises)) {
+            routine.exercises.forEach(exercise => {
+                addRoutineExercise(exercise.preset_id, exercise.name, exercise);
+            });
+        }
+    }
+
     routineBuilderModalOverlay.style.display = 'flex';
     if (routineNameInput) {
         routineNameInput.focus();
@@ -873,6 +888,7 @@ function closeRoutineBuilderModal() {
     if (routineBuilderModalOverlay) {
         routineBuilderModalOverlay.style.display = 'none';
     }
+    editingRoutineId = null;
 }
 
 function filterRoutinePresets() {
@@ -887,7 +903,7 @@ function filterRoutinePresets() {
     });
 }
 
-function addRoutineExercise(presetId, name) {
+function addRoutineExercise(presetId, name, settings = null) {
     if (!routineExerciseList || !presetId || !name) {
         return;
     }
@@ -903,15 +919,15 @@ function addRoutineExercise(presetId, name) {
         <div class="routine-exercise-controls">
             <label>
                 <span>Sets</span>
-                <input type="number" class="routine-sets-input" min="1" value="3">
+                <input type="number" class="routine-sets-input" min="1" value="${settings?.sets || 3}">
             </label>
             <label>
                 <span>Rep Min</span>
-                <input type="number" class="routine-rep-min-input" min="1" value="8">
+                <input type="number" class="routine-rep-min-input" min="1" value="${settings?.rep_min || 8}">
             </label>
             <label>
                 <span>Rep Max</span>
-                <input type="number" class="routine-rep-max-input" min="1" value="12">
+                <input type="number" class="routine-rep-max-input" min="1" value="${settings?.rep_max || 12}">
             </label>
         </div>
     `;
@@ -1012,6 +1028,14 @@ function renderRoutines(routines) {
                     <div class="routine-summary">${exerciseSummary}</div>
                 </div>
                 <div class="routine-card-actions">
+                    <div class="routine-menu-wrap">
+                        <button type="button" class="routine-menu-btn" data-id="${routine.id}" aria-label="Routine options">&#8942;</button>
+                        <div class="routine-menu" data-id="${routine.id}" hidden>
+                            <button type="button" class="routine-menu-action" data-action="duplicate" data-id="${routine.id}">Duplicate</button>
+                            <button type="button" class="routine-menu-action" data-action="edit" data-id="${routine.id}">Edit</button>
+                            <button type="button" class="routine-menu-action is-danger" data-action="delete" data-id="${routine.id}">Delete</button>
+                        </div>
+                    </div>
                     <label class="routine-folder-select">
                         <span>Folder</span>
                         <select class="routine-folder-input" data-id="${routine.id}">
@@ -1043,6 +1067,26 @@ function renderRoutines(routines) {
     routineList.querySelectorAll('.start-routine-btn').forEach(button => {
         button.addEventListener('click', function () {
             startRoutine(button.dataset.id);
+        });
+    });
+
+    routineList.querySelectorAll('.routine-menu-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            const menu = routineList.querySelector(`.routine-menu[data-id="${button.dataset.id}"]`);
+            routineList.querySelectorAll('.routine-menu').forEach(item => {
+                if (item !== menu) {
+                    item.hidden = true;
+                }
+            });
+            if (menu) {
+                menu.hidden = !menu.hidden;
+            }
+        });
+    });
+
+    routineList.querySelectorAll('.routine-menu-action').forEach(button => {
+        button.addEventListener('click', function () {
+            handleRoutineMenuAction(button.dataset.action, Number(button.dataset.id));
         });
     });
 
@@ -1159,6 +1203,91 @@ function updateRoutineFolder(routineId, folderId) {
     });
 }
 
+function handleRoutineMenuAction(action, routineId) {
+    const routine = savedRoutines.find(item => item.id === routineId);
+
+    if (!routine) {
+        showMessage('Routine not found.', 'error');
+        return;
+    }
+
+    if (action === 'edit') {
+        openRoutineBuilderModal(routine);
+        return;
+    }
+
+    if (action === 'duplicate') {
+        duplicateRoutine(routineId);
+        return;
+    }
+
+    if (action === 'delete') {
+        deleteRoutine(routineId);
+    }
+}
+
+function duplicateRoutine(routineId) {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch(`http://127.0.0.1:5000/routines/${routineId}/duplicate`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage('Routine duplicated.', 'success');
+            loadRoutines();
+        } else {
+            showMessage(data.message || 'Failed to duplicate routine.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Duplicate routine error:', error);
+        showMessage('Failed to duplicate routine.', 'error');
+    });
+}
+
+function deleteRoutine(routineId) {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    if (!window.confirm('Delete this routine?')) {
+        return;
+    }
+
+    fetch(`http://127.0.0.1:5000/routines/${routineId}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage('Routine deleted.', 'success');
+            loadRoutines();
+        } else {
+            showMessage(data.message || 'Failed to delete routine.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Delete routine error:', error);
+        showMessage('Failed to delete routine.', 'error');
+    });
+}
+
 function saveRoutine() {
     const token = localStorage.getItem('access_token');
 
@@ -1180,18 +1309,30 @@ function saveRoutine() {
         return;
     }
 
-    fetch('http://127.0.0.1:5000/routines', {
-        method: 'POST',
+    const requestUrl = editingRoutineId
+        ? `http://127.0.0.1:5000/routines/${editingRoutineId}`
+        : 'http://127.0.0.1:5000/routines';
+    const requestMethod = editingRoutineId ? 'PUT' : 'POST';
+    const currentRoutine = editingRoutineId
+        ? savedRoutines.find(item => item.id === editingRoutineId)
+        : null;
+
+    fetch(requestUrl, {
+        method: requestMethod,
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ name, exercises })
+        body: JSON.stringify({
+            name,
+            exercises,
+            folder_id: currentRoutine ? (currentRoutine.folder_id || null) : null
+        })
     })
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
-            showMessage('Routine saved successfully!', 'success');
+            showMessage(editingRoutineId ? 'Routine updated successfully!' : 'Routine saved successfully!', 'success');
             if (routineBuilderForm) {
                 routineBuilderForm.reset();
             }

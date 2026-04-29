@@ -314,6 +314,42 @@ def normalize_string_list(value):
     return []
 
 
+def clean_routine_exercises(exercises):
+    if not isinstance(exercises, list) or not exercises:
+        return None, "Add at least one exercise"
+
+    cleaned_exercises = []
+    for exercise in exercises:
+        if not isinstance(exercise, dict):
+            return None, "Each exercise must be an object"
+
+        preset_id = normalize_text(exercise.get("preset_id"))
+        if not preset_id or not find_preset_workout(preset_id):
+            return None, "Choose a valid preset exercise"
+
+        sets = exercise.get("sets")
+        rep_min = exercise.get("rep_min")
+        rep_max = exercise.get("rep_max")
+
+        if not isinstance(sets, int) or sets <= 0:
+            return None, "Sets must be a positive number"
+        if not isinstance(rep_min, int) or rep_min <= 0:
+            return None, "Rep min must be a positive number"
+        if not isinstance(rep_max, int) or rep_max < rep_min:
+            return None, "Rep max must be at least rep min"
+
+        preset_workout = find_preset_workout(preset_id)
+        cleaned_exercises.append({
+            "preset_id": preset_id,
+            "name": preset_workout.get("name", "Preset workout"),
+            "sets": sets,
+            "rep_min": rep_min,
+            "rep_max": rep_max
+        })
+
+    return cleaned_exercises, None
+
+
 def find_preset_workout(exercise_id):
     preset_workouts = load_preset_workouts()
     for workout in preset_workouts:
@@ -661,18 +697,28 @@ def create_routine_folder():
 def update_routine(routine_id):
     data = request.get_json(silent=True)
 
-    if not data or "folder_id" not in data:
-        return jsonify({"status": "error", "message": "folder_id is required"}), 400
+    if not data:
+        return jsonify({"status": "error", "message": "No data provided"}), 400
 
     folder_id = data.get("folder_id")
-    if folder_id is not None and not isinstance(folder_id, int):
+    if "folder_id" in data and folder_id is not None and not isinstance(folder_id, int):
         return jsonify({"status": "error", "message": "folder_id must be a number or null"}), 400
+
+    name = normalize_text(data.get("name")) if "name" in data else None
+    if "name" in data and not name:
+        return jsonify({"status": "error", "message": "Routine name is required"}), 400
+
+    cleaned_exercises = None
+    if "exercises" in data:
+        cleaned_exercises, error = clean_routine_exercises(data.get("exercises"))
+        if error:
+            return jsonify({"status": "error", "message": error}), 400
 
     current_user = get_jwt_identity()
     routines = load_routines()
     routine_to_update = None
 
-    if folder_id is not None:
+    if "folder_id" in data and folder_id is not None:
         folders = load_routine_folders()
         folder_exists = any(
             folder.get("id") == folder_id and folder.get("owner") == current_user
@@ -685,7 +731,12 @@ def update_routine(routine_id):
         if routine.get("id") == routine_id:
             if routine.get("owner") != current_user:
                 return jsonify({"status": "error", "message": "You are not allowed to update this routine."}), 403
-            routine["folder_id"] = folder_id
+            if "folder_id" in data:
+                routine["folder_id"] = folder_id
+            if name is not None:
+                routine["name"] = name
+            if cleaned_exercises is not None:
+                routine["exercises"] = cleaned_exercises
             routine_to_update = routine
             break
 
@@ -698,6 +749,61 @@ def update_routine(routine_id):
         "status": "success",
         "message": "Routine updated",
         "data": routine_to_update
+    }), 200
+
+
+@app.route("/routines/<int:routine_id>/duplicate", methods=["POST"])
+@jwt_required()
+def duplicate_routine(routine_id):
+    current_user = get_jwt_identity()
+    routines = load_routines()
+    routine = next(
+        (
+            item for item in routines
+            if item.get("id") == routine_id and item.get("owner") == current_user
+        ),
+        None
+    )
+
+    if not routine:
+        return jsonify({"status": "error", "message": "Routine not found"}), 404
+
+    duplicated = dict(routine)
+    duplicated["id"] = next_numeric_id(routines)
+    duplicated["name"] = f"{routine.get('name', 'Routine')} Copy"
+    duplicated["exercises"] = [dict(exercise) for exercise in routine.get("exercises", [])]
+    routines.append(duplicated)
+    save_routines(routines)
+
+    return jsonify({
+        "status": "success",
+        "message": "Routine duplicated",
+        "data": duplicated
+    }), 201
+
+
+@app.route("/routines/<int:routine_id>", methods=["DELETE"])
+@jwt_required()
+def delete_routine(routine_id):
+    current_user = get_jwt_identity()
+    routines = load_routines()
+    routine = next(
+        (
+            item for item in routines
+            if item.get("id") == routine_id and item.get("owner") == current_user
+        ),
+        None
+    )
+
+    if not routine:
+        return jsonify({"status": "error", "message": "Routine not found"}), 404
+
+    routines.remove(routine)
+    save_routines(routines)
+
+    return jsonify({
+        "status": "success",
+        "message": "Routine deleted"
     }), 200
 
 
@@ -718,34 +824,9 @@ def create_routine():
     if not isinstance(exercises, list) or not exercises:
         return jsonify({"status": "error", "message": "Add at least one exercise"}), 400
 
-    cleaned_exercises = []
-    for exercise in exercises:
-        if not isinstance(exercise, dict):
-            return jsonify({"status": "error", "message": "Each exercise must be an object"}), 400
-
-        preset_id = normalize_text(exercise.get("preset_id"))
-        if not preset_id or not find_preset_workout(preset_id):
-            return jsonify({"status": "error", "message": "Choose a valid preset exercise"}), 400
-
-        sets = exercise.get("sets")
-        rep_min = exercise.get("rep_min")
-        rep_max = exercise.get("rep_max")
-
-        if not isinstance(sets, int) or sets <= 0:
-            return jsonify({"status": "error", "message": "Sets must be a positive number"}), 400
-        if not isinstance(rep_min, int) or rep_min <= 0:
-            return jsonify({"status": "error", "message": "Rep min must be a positive number"}), 400
-        if not isinstance(rep_max, int) or rep_max < rep_min:
-            return jsonify({"status": "error", "message": "Rep max must be at least rep min"}), 400
-
-        preset_workout = find_preset_workout(preset_id)
-        cleaned_exercises.append({
-            "preset_id": preset_id,
-            "name": preset_workout.get("name", "Preset workout"),
-            "sets": sets,
-            "rep_min": rep_min,
-            "rep_max": rep_max
-        })
+    cleaned_exercises, error = clean_routine_exercises(exercises)
+    if error:
+        return jsonify({"status": "error", "message": error}), 400
 
     current_user = get_jwt_identity()
     routines = load_routines()
