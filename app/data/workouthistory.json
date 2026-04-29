@@ -2092,5 +2092,616 @@
                 "secondary_hits": 1
             }
         ]
+    },
+    {
+        "id": 10004,
+        "owner": "admin",
+        "session_name": "Pull Day",
+        "completed_at": "2026-04-29 22:57",
+        "completed_workout": [
+            {
+                "id": 10000,
+                "preset_id": "01qpYSe",
+                "workout": "upward facing dog",
+                "equipment": "body weight",
+                "bodyParts": [
+                    "back"
+                ],
+                "primaryMuscles": [
+                    "spine"
+                ],
+                "secondaryMuscles": [
+                    "shoulders",
+                    "chest"
+                ],
+                "owner": "admin",
+                "is_preset": false,
+                "completed": false,
+                "notes": "",
+                "sets": 3,
+                "reps": [
+                    8,
+                    8,
+                    8
+                ],
+                "set_details": [
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    },
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    },
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    }
+                ],
+                "routine_rep_min": 8,
+                "routine_rep_max": 12,
+                "routine_name": "Pull Day"
+            },
+            {
+                "id": 10001,
+                "preset_id": "03lzqwk",
+                "workout": "assisted hanging knee raise",
+                "equipment": "assisted",
+                "bodyParts": [
+                    "waist"
+                ],
+                "primaryMuscles": [
+                    "abs"
+                ],
+                "secondaryMuscles": [
+                    "hip flexors"
+                ],
+                "owner": "admin",
+                "is_preset": false,
+                "completed": false,
+                "notes": "",
+                "sets": 3,
+                "reps": [
+                    8,
+                    8,
+                    8
+                ],
+                "set_details": [
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    },
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    },
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    }
+                ],
+                "routine_rep_min": 8,
+                "routine_rep_max": 12,
+                "routine_name": "Pull Day"
+            },
+            {
+                "id": 10002,
+                "preset_id": "05Cf2v8",
+                "workout": "impossible dips",
+                "equipment": "body weight",
+                "bodyParts": [
+                    "upper arms"
+                ],
+                "primaryMuscles": [
+                    "triceps"
+                ],
+                "secondaryMuscles": [
+                    "chest",
+                    "shoulders"
+                ],
+                "owner": "admin",
+                "is_preset": false,
+                "completed": false,
+                "notes": "",
+                "sets": 3,
+                "reps": [
+                    8,
+                    8,
+                    8
+                ],
+                "set_details": [
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    },
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    },
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    }
+                ],
+                "routine_rep_min": 8,
+                "routine_rep_max": 12,
+                "routine_name": "Pull Day"
+            },
+            {
+                "id": 10003,
+                "preset_id": "0CXGHya",
+                "workout": "cable cross-over variation",
+                "equipment": "cable",
+                "bodyParts": [
+                    "chest"
+                ],
+                "primaryMuscles": [
+                    "pectorals"
+                ],
+                "secondaryMuscles": [
+                    "deltoids",
+                    "triceps"
+                ],
+                "owner": "admin",
+                "is_preset": false,
+                "completed": false,
+                "notes": "",
+                "sets": 3,
+                "reps": [
+                    8,
+                    8,
+                    8
+                ],
+                "set_details": [
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    },
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    },
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    }
+                ],
+                "routine_rep_min": 8,
+                "routine_rep_max": 12,
+                "routine_name": "Pull Day"
+            },
+            {
+                "id": 10004,
+                "preset_id": "0dCyly0",
+                "workout": "barbell seated bradford rocky press",
+                "equipment": "barbell",
+                "bodyParts": [
+                    "shoulders"
+                ],
+                "primaryMuscles": [
+                    "delts"
+                ],
+                "secondaryMuscles": [
+                    "triceps",
+                    "upper back"
+                ],
+                "owner": "admin",
+                "is_preset": false,
+                "completed": false,
+                "notes": "",
+                "sets": 3,
+                "reps": [
+                    8,
+                    8,
+                    8
+                ],
+                "set_details": [
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    },
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    },
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    }
+                ],
+                "routine_rep_min": 8,
+                "routine_rep_max": 12,
+                "routine_name": "Pull Day"
+            },
+            {
+                "id": 10005,
+                "preset_id": "0lQnxMZ",
+                "workout": "weighted sissy squat",
+                "equipment": "weighted",
+                "bodyParts": [
+                    "upper legs"
+                ],
+                "primaryMuscles": [
+                    "quads"
+                ],
+                "secondaryMuscles": [
+                    "glutes",
+                    "hamstrings",
+                    "calves"
+                ],
+                "owner": "admin",
+                "is_preset": false,
+                "completed": false,
+                "notes": "",
+                "sets": 3,
+                "reps": [
+                    8,
+                    8,
+                    8
+                ],
+                "set_details": [
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    },
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    },
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    }
+                ],
+                "routine_rep_min": 8,
+                "routine_rep_max": 12,
+                "routine_name": "Pull Day"
+            },
+            {
+                "id": 10006,
+                "preset_id": "11wrviz",
+                "workout": "isometric wipers",
+                "equipment": "body weight",
+                "bodyParts": [
+                    "chest"
+                ],
+                "primaryMuscles": [
+                    "pectorals"
+                ],
+                "secondaryMuscles": [
+                    "shoulders",
+                    "triceps",
+                    "core"
+                ],
+                "owner": "admin",
+                "is_preset": false,
+                "completed": false,
+                "notes": "",
+                "sets": 3,
+                "reps": [
+                    8,
+                    8,
+                    8
+                ],
+                "set_details": [
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    },
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    },
+                    {
+                        "reps": 8,
+                        "kg": 0,
+                        "set_type": "working",
+                        "done": false
+                    }
+                ],
+                "routine_rep_min": 8,
+                "routine_rep_max": 12,
+                "routine_name": "Pull Day"
+            }
+        ],
+        "muscle_split": [
+            {
+                "muscle": "triceps",
+                "percent": 20
+            },
+            {
+                "muscle": "pectorals",
+                "percent": 14
+            },
+            {
+                "muscle": "shoulders",
+                "percent": 10
+            },
+            {
+                "muscle": "spine",
+                "percent": 7
+            },
+            {
+                "muscle": "chest",
+                "percent": 7
+            },
+            {
+                "muscle": "abs",
+                "percent": 7
+            },
+            {
+                "muscle": "delts",
+                "percent": 7
+            },
+            {
+                "muscle": "quads",
+                "percent": 7
+            },
+            {
+                "muscle": "hip flexors",
+                "percent": 3
+            },
+            {
+                "muscle": "deltoids",
+                "percent": 3
+            },
+            {
+                "muscle": "upper back",
+                "percent": 3
+            },
+            {
+                "muscle": "glutes",
+                "percent": 3
+            },
+            {
+                "muscle": "hamstrings",
+                "percent": 3
+            },
+            {
+                "muscle": "calves",
+                "percent": 3
+            },
+            {
+                "muscle": "core",
+                "percent": 3
+            }
+        ],
+        "muscle_map": [
+            {
+                "group": "abs",
+                "label": "Abs",
+                "level": "primary",
+                "primary_hits": 1,
+                "secondary_hits": 1
+            },
+            {
+                "group": "chest",
+                "label": "Chest",
+                "level": "primary",
+                "primary_hits": 2,
+                "secondary_hits": 2
+            },
+            {
+                "group": "lower_back",
+                "label": "Lower Back",
+                "level": "primary",
+                "primary_hits": 1,
+                "secondary_hits": 0
+            },
+            {
+                "group": "quads",
+                "label": "Quads",
+                "level": "primary",
+                "primary_hits": 1,
+                "secondary_hits": 0
+            },
+            {
+                "group": "shoulders",
+                "label": "Shoulders",
+                "level": "primary",
+                "primary_hits": 1,
+                "secondary_hits": 4
+            },
+            {
+                "group": "triceps",
+                "label": "Triceps",
+                "level": "primary",
+                "primary_hits": 1,
+                "secondary_hits": 3
+            },
+            {
+                "group": "calves",
+                "label": "Calves",
+                "level": "secondary",
+                "primary_hits": 0,
+                "secondary_hits": 1
+            },
+            {
+                "group": "glutes",
+                "label": "Glutes",
+                "level": "secondary",
+                "primary_hits": 0,
+                "secondary_hits": 1
+            },
+            {
+                "group": "hamstrings",
+                "label": "Hamstrings",
+                "level": "secondary",
+                "primary_hits": 0,
+                "secondary_hits": 1
+            },
+            {
+                "group": "hips",
+                "label": "Hips",
+                "level": "secondary",
+                "primary_hits": 0,
+                "secondary_hits": 1
+            },
+            {
+                "group": "upper_back",
+                "label": "Upper Back",
+                "level": "secondary",
+                "primary_hits": 0,
+                "secondary_hits": 1
+            }
+        ]
+    },
+    {
+        "id": 10005,
+        "owner": "admin",
+        "session_name": "Workout",
+        "completed_at": "2026-04-29 22:58",
+        "completed_workout": [
+            {
+                "id": 10000,
+                "preset_id": "da4cXST",
+                "workout": "ez-bar close-grip bench press",
+                "equipment": "ez barbell",
+                "bodyParts": [
+                    "upper arms"
+                ],
+                "primaryMuscles": [
+                    "triceps"
+                ],
+                "secondaryMuscles": [
+                    "chest",
+                    "shoulders"
+                ],
+                "owner": "admin",
+                "is_preset": false,
+                "completed": false,
+                "notes": ""
+            },
+            {
+                "id": 10001,
+                "preset_id": "ila4NZS",
+                "workout": "barbell deadlift",
+                "equipment": "barbell",
+                "bodyParts": [
+                    "upper legs"
+                ],
+                "primaryMuscles": [
+                    "glutes"
+                ],
+                "secondaryMuscles": [
+                    "hamstrings",
+                    "lower back"
+                ],
+                "owner": "admin",
+                "is_preset": false,
+                "completed": false,
+                "notes": ""
+            }
+        ],
+        "muscle_split": [
+            {
+                "muscle": "triceps",
+                "percent": 27
+            },
+            {
+                "muscle": "glutes",
+                "percent": 25
+            },
+            {
+                "muscle": "chest",
+                "percent": 12
+            },
+            {
+                "muscle": "shoulders",
+                "percent": 12
+            },
+            {
+                "muscle": "hamstrings",
+                "percent": 12
+            },
+            {
+                "muscle": "lower back",
+                "percent": 12
+            }
+        ],
+        "muscle_map": [
+            {
+                "group": "glutes",
+                "label": "Glutes",
+                "level": "primary",
+                "primary_hits": 1,
+                "secondary_hits": 0
+            },
+            {
+                "group": "triceps",
+                "label": "Triceps",
+                "level": "primary",
+                "primary_hits": 1,
+                "secondary_hits": 0
+            },
+            {
+                "group": "chest",
+                "label": "Chest",
+                "level": "secondary",
+                "primary_hits": 0,
+                "secondary_hits": 1
+            },
+            {
+                "group": "hamstrings",
+                "label": "Hamstrings",
+                "level": "secondary",
+                "primary_hits": 0,
+                "secondary_hits": 1
+            },
+            {
+                "group": "lower_back",
+                "label": "Lower Back",
+                "level": "secondary",
+                "primary_hits": 0,
+                "secondary_hits": 1
+            },
+            {
+                "group": "shoulders",
+                "label": "Shoulders",
+                "level": "secondary",
+                "primary_hits": 0,
+                "secondary_hits": 1
+            }
+        ]
     }
 ]

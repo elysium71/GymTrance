@@ -2190,7 +2190,7 @@ if (workoutDetailModalOverlay) {
 
 if (closeMuscleSplitButton) {
     closeMuscleSplitButton.addEventListener('click', function () {
-        closeMuscleSplitModal();
+        window.location.href = '/workouts';
     });
 }
 
