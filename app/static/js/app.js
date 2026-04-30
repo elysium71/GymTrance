@@ -65,6 +65,29 @@ const statsMuscleBars = document.querySelector('#stats-muscle-bars');
 const statsDistributionChart = document.querySelector('#stats-distribution-chart');
 const statsMuscleMapBody = document.querySelector('#stats-muscle-map-body');
 const statsMainExercises = document.querySelector('#stats-main-exercises');
+const exerciseLibrarySearch = document.querySelector('#exercise-library-search');
+const exerciseLibraryFilter = document.querySelector('#exercise-library-filter');
+const exerciseLibraryList = document.querySelector('#exercise-library-list');
+const exerciseDetailEmpty = document.querySelector('#exercise-detail-empty');
+const exerciseDetailContent = document.querySelector('#exercise-detail-content');
+const exerciseDetailTitle = document.querySelector('#exercise-detail-title');
+const exerciseDetailSubtitle = document.querySelector('#exercise-detail-subtitle');
+const exerciseBestGrid = document.querySelector('#exercise-best-grid');
+const exerciseSetRecords = document.querySelector('#exercise-set-records');
+const exerciseStrengthLevel = document.querySelector('#exercise-strength-level');
+const exerciseHistoryList = document.querySelector('#exercise-history-list');
+const shareExercisePerformanceButton = document.querySelector('#share-exercise-performance-btn');
+const openMeasurementModalButton = document.querySelector('#open-measurement-modal-btn');
+const measurementModalOverlay = document.querySelector('#measurement-modal-overlay');
+const closeMeasurementModalButton = document.querySelector('#close-measurement-modal-btn');
+const measurementForm = document.querySelector('#measurement-form');
+const measurementEntryIdInput = document.querySelector('#measurement-entry-id');
+const measurementDateInput = document.querySelector('#measurement-date-input');
+const measurementPhotoInput = document.querySelector('#measurement-photo-input');
+const measurementTabs = document.querySelector('#measure-tabs');
+const measurementChart = document.querySelector('#measure-chart');
+const measurementChartTitle = document.querySelector('#measure-chart-title');
+const measurementList = document.querySelector('#measurement-list');
 
 const savedToken = localStorage.getItem('access_token');
 let pendingSetContext = null;
@@ -74,6 +97,11 @@ let savedRoutineFolders = [];
 const openRoutineFolderIds = new Set(['unfiled']);
 let editingRoutineId = null;
 let routineBuilderFolderId = null;
+let exercisePerformanceData = [];
+let activeExercisePerformance = null;
+let measurementEntries = [];
+let measurementFields = [];
+let activeMeasurementField = 'weight';
 
 const SET_TYPE_META = {
     warmup: { code: 'W', label: 'Warm Up' },
@@ -1857,6 +1885,15 @@ function renderWorkoutHistory(historyItems) {
             deleteHistorySession(button.dataset.historyId);
         });
     });
+
+    const openHistoryId = new URLSearchParams(window.location.search).get('open');
+    if (openHistoryId) {
+        const card = historyList.querySelector(`.history-session-card[data-history-id="${openHistoryId}"]`);
+        if (card) {
+            showHistoryDetails(card, true);
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
 }
 
 function showHistoryDetails(card, shouldShow) {
@@ -2091,6 +2128,479 @@ function loadStatistics() {
     .catch(error => {
         console.error('Load statistics error:', error);
         showMessage('Failed to load statistics.', 'error');
+    });
+}
+
+function getBestMetricText(key, metric) {
+    if (!metric) {
+        return 'No record';
+    }
+
+    if (key === 'heaviest_weight') {
+        return `${formatStatNumber(metric.value)} kg`;
+    }
+    if (key === 'estimated_1rm') {
+        return `${formatStatNumber(metric.value)} kg`;
+    }
+    if (key === 'best_set_volume' || key === 'best_session_volume') {
+        return `${formatStatNumber(metric.value)} kg`;
+    }
+    if (key === 'most_reps') {
+        return `${formatStatNumber(metric.value)} reps`;
+    }
+    return formatStatNumber(metric.value);
+}
+
+function renderExerciseLibrary() {
+    if (!exerciseLibraryList) {
+        return;
+    }
+
+    const query = exerciseLibrarySearch ? exerciseLibrarySearch.value.trim().toLowerCase() : '';
+    const filter = exerciseLibraryFilter ? exerciseLibraryFilter.value : '';
+    const visibleExercises = exercisePerformanceData.filter(exercise => {
+        const matchesSearch = !query
+            || (exercise.name || '').toLowerCase().includes(query)
+            || (exercise.equipment || '').toLowerCase().includes(query)
+            || (exercise.primary_muscles || []).some(muscle => muscle.toLowerCase().includes(query));
+        const isStrengthLift = /bench press|squat|deadlift/i.test(exercise.name || '');
+        const matchesFilter = !filter
+            || (filter === 'recent')
+            || (filter === 'custom' && exercise.is_custom)
+            || (filter === 'strength' && isStrengthLift);
+        return matchesSearch && matchesFilter;
+    });
+
+    exerciseLibraryList.innerHTML = visibleExercises.length ? visibleExercises.map(exercise => `
+        <button type="button" class="exercise-library-item${activeExercisePerformance && activeExercisePerformance.key === exercise.key ? ' is-selected' : ''}" data-key="${escapeHtml(exercise.key)}">
+            <strong>${escapeHtml(formatTitleCase(exercise.name))}</strong>
+            <span>${exercise.times_logged || 0} logs | ${exercise.total_sets || 0} sets | ${escapeHtml(exercise.equipment || 'Custom')}</span>
+        </button>
+    `).join('') : '<p class="empty-state">No exercises match this search.</p>';
+
+    exerciseLibraryList.querySelectorAll('.exercise-library-item').forEach(button => {
+        button.addEventListener('click', function () {
+            const selected = exercisePerformanceData.find(exercise => exercise.key === button.dataset.key);
+            renderExerciseDetail(selected);
+        });
+    });
+}
+
+function openHistorySession(sessionId) {
+    if (!sessionId) {
+        return;
+    }
+
+    window.location.href = `/workouts/history?open=${encodeURIComponent(sessionId)}`;
+}
+
+function renderExerciseDetail(exercise) {
+    activeExercisePerformance = exercise || null;
+    renderExerciseLibrary();
+
+    if (!exercise || !exerciseDetailContent || !exerciseDetailEmpty) {
+        return;
+    }
+
+    exerciseDetailEmpty.hidden = true;
+    exerciseDetailContent.hidden = false;
+    if (exerciseDetailTitle) {
+        exerciseDetailTitle.textContent = formatTitleCase(exercise.name);
+    }
+    if (exerciseDetailSubtitle) {
+        const muscles = [...(exercise.primary_muscles || []), ...(exercise.secondary_muscles || [])].slice(0, 4);
+        exerciseDetailSubtitle.textContent = `${exercise.times_logged || 0} workouts | ${exercise.total_sets || 0} sets | ${muscles.join(', ') || 'No muscles saved'}`;
+    }
+
+    const bestMeta = [
+        ['heaviest_weight', 'Heaviest Weight'],
+        ['estimated_1rm', 'Estimated 1RM'],
+        ['best_set_volume', 'Best Set Volume'],
+        ['best_session_volume', 'Best Session Volume'],
+        ['most_reps', 'Most Reps']
+    ];
+
+    if (exerciseBestGrid) {
+        exerciseBestGrid.innerHTML = bestMeta.map(([key, label]) => {
+            const metric = exercise.best ? exercise.best[key] : null;
+            return `
+                <button type="button" class="exercise-best-card" data-session-id="${metric ? metric.session_id || '' : ''}">
+                    <span>${escapeHtml(label)}</span>
+                    <strong>${escapeHtml(getBestMetricText(key, metric))}</strong>
+                    <small>${metric ? escapeHtml(`${metric.kg || 0} kg x ${metric.reps || 0} | ${formatHistoryDate(metric.completed_at)}`) : 'Start logging to unlock'}</small>
+                </button>
+            `;
+        }).join('');
+
+        exerciseBestGrid.querySelectorAll('.exercise-best-card').forEach(button => {
+            button.addEventListener('click', function () {
+                openHistorySession(button.dataset.sessionId);
+            });
+        });
+    }
+
+    if (exerciseSetRecords) {
+        const records = Array.isArray(exercise.set_records) ? exercise.set_records : [];
+        exerciseSetRecords.innerHTML = records.length ? records.map(record => `
+            <button type="button" class="exercise-record-row" data-session-id="${record.session_id || ''}">
+                <span>${record.reps} reps</span>
+                <strong>${formatStatNumber(record.kg)} kg</strong>
+                <small>${escapeHtml(formatHistoryDate(record.completed_at))}</small>
+            </button>
+        `).join('') : '<p class="empty-state">No set records yet.</p>';
+
+        exerciseSetRecords.querySelectorAll('.exercise-record-row').forEach(button => {
+            button.addEventListener('click', function () {
+                openHistorySession(button.dataset.sessionId);
+            });
+        });
+    }
+
+    if (exerciseStrengthLevel) {
+        const strength = exercise.strength_level || {};
+        exerciseStrengthLevel.innerHTML = `
+            <strong>${escapeHtml(strength.label || 'Not available')}</strong>
+            <p>${escapeHtml(strength.description || '')}</p>
+        `;
+    }
+
+    if (exerciseHistoryList) {
+        const history = Array.isArray(exercise.history) ? exercise.history : [];
+        exerciseHistoryList.innerHTML = history.length ? history.map(item => `
+            <button type="button" class="exercise-history-row" data-session-id="${item.session_id || ''}">
+                <div>
+                    <strong>${escapeHtml(formatHistoryDate(item.completed_at))}</strong>
+                    <span>${escapeHtml(formatTitleCase(item.session_name || 'Workout'))}</span>
+                </div>
+                <div>
+                    <strong>${formatStatNumber(item.volume)} kg</strong>
+                    <span>${item.sets || 0} sets | ${item.best_set || 'No best set'}</span>
+                </div>
+            </button>
+        `).join('') : '<p class="empty-state">No workout history yet.</p>';
+
+        exerciseHistoryList.querySelectorAll('.exercise-history-row').forEach(button => {
+            button.addEventListener('click', function () {
+                openHistorySession(button.dataset.sessionId);
+            });
+        });
+    }
+}
+
+function shareExercisePerformance() {
+    if (!activeExercisePerformance) {
+        showMessage('Choose an exercise first.', 'error');
+        return;
+    }
+
+    const best = activeExercisePerformance.best || {};
+    const text = [
+        `${formatTitleCase(activeExercisePerformance.name)} Performance`,
+        `Heaviest: ${getBestMetricText('heaviest_weight', best.heaviest_weight)}`,
+        `Estimated 1RM: ${getBestMetricText('estimated_1rm', best.estimated_1rm)}`,
+        `Best set volume: ${getBestMetricText('best_set_volume', best.best_set_volume)}`,
+        `Most reps: ${getBestMetricText('most_reps', best.most_reps)}`
+    ].join('\n');
+
+    if (navigator.share) {
+        navigator.share({ title: 'GymTrance Exercise Performance', text }).catch(() => {});
+        return;
+    }
+
+    navigator.clipboard.writeText(text)
+        .then(() => showMessage('Exercise summary copied.', 'success'))
+        .catch(() => showMessage('Could not copy exercise summary.', 'error'));
+}
+
+function loadExercisePerformance() {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch('http://127.0.0.1:5000/exercise-performance-data', {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            exercisePerformanceData = Array.isArray(data.data) ? data.data : [];
+            renderExerciseLibrary();
+            renderExerciseDetail(exercisePerformanceData[0] || null);
+        } else {
+            showMessage(data.message || 'Failed to load exercise performance.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Load exercise performance error:', error);
+        showMessage('Failed to load exercise performance.', 'error');
+    });
+}
+
+function getMeasurementInput(field) {
+    return document.querySelector(`#measure-${field}`);
+}
+
+function openMeasurementModal(entry = null) {
+    if (!measurementModalOverlay || !measurementForm) {
+        return;
+    }
+
+    measurementForm.reset();
+    if (measurementEntryIdInput) {
+        measurementEntryIdInput.value = entry ? entry.id : '';
+    }
+    if (measurementDateInput) {
+        measurementDateInput.value = entry ? entry.date : new Date().toISOString().slice(0, 10);
+    }
+    if (entry && entry.measurements) {
+        Object.entries(entry.measurements).forEach(([field, value]) => {
+            const input = getMeasurementInput(field);
+            if (input) {
+                input.value = value;
+            }
+        });
+    }
+    const title = document.querySelector('#measurement-modal-title');
+    if (title) {
+        title.textContent = entry ? 'Edit Measurements' : 'Add Measurements';
+    }
+    measurementModalOverlay.style.display = 'flex';
+}
+
+function closeMeasurementModal() {
+    if (measurementModalOverlay) {
+        measurementModalOverlay.style.display = 'none';
+    }
+}
+
+function renderMeasurementTabs() {
+    if (!measurementTabs) {
+        return;
+    }
+
+    measurementTabs.innerHTML = measurementFields.map(field => `
+        <button type="button" class="measure-tab${field.key === activeMeasurementField ? ' is-active' : ''}" data-field="${field.key}">
+            ${escapeHtml(field.label)}
+        </button>
+    `).join('');
+
+    measurementTabs.querySelectorAll('.measure-tab').forEach(button => {
+        button.addEventListener('click', function () {
+            activeMeasurementField = button.dataset.field;
+            renderMeasurements();
+        });
+    });
+}
+
+function renderMeasurementChart() {
+    if (!measurementChart) {
+        return;
+    }
+
+    const activeField = measurementFields.find(field => field.key === activeMeasurementField);
+    if (measurementChartTitle && activeField) {
+        measurementChartTitle.textContent = activeField.label;
+    }
+
+    const points = measurementEntries
+        .filter(entry => entry.measurements && entry.measurements[activeMeasurementField] !== undefined)
+        .slice()
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+        .map(entry => ({
+            date: entry.date,
+            value: Number(entry.measurements[activeMeasurementField])
+        }));
+
+    if (!points.length) {
+        measurementChart.innerHTML = '<p class="empty-state">No data logged for this measurement yet.</p>';
+        return;
+    }
+
+    const minValue = Math.min(...points.map(point => point.value));
+    const maxValue = Math.max(...points.map(point => point.value));
+    const range = Math.max(1, maxValue - minValue);
+    const polyline = points.map((point, index) => {
+        const x = points.length === 1 ? 50 : (index / (points.length - 1)) * 100;
+        const y = 90 - ((point.value - minValue) / range) * 70;
+        return `${x},${y}`;
+    }).join(' ');
+
+    measurementChart.innerHTML = `
+        <svg class="measure-chart-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <polyline points="${polyline}" fill="none" stroke="#ff7a3d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
+            ${points.map((point, index) => {
+                const x = points.length === 1 ? 50 : (index / (points.length - 1)) * 100;
+                const y = 90 - ((point.value - minValue) / range) * 70;
+                return `<circle cx="${x}" cy="${y}" r="2.7"></circle>`;
+            }).join('')}
+        </svg>
+        <div class="measure-chart-meta">
+            <span>${escapeHtml(points[0].date)}: ${points[0].value}</span>
+            <strong>${points[points.length - 1].value}</strong>
+            <span>${escapeHtml(points[points.length - 1].date)}</span>
+        </div>
+    `;
+}
+
+function renderMeasurementList() {
+    if (!measurementList) {
+        return;
+    }
+
+    measurementList.innerHTML = measurementEntries.length ? measurementEntries.map(entry => {
+        const values = Object.entries(entry.measurements || {})
+            .map(([field, value]) => {
+                const fieldMeta = measurementFields.find(item => item.key === field);
+                return `<span>${escapeHtml(fieldMeta ? fieldMeta.label : field)}: <strong>${value}</strong></span>`;
+            })
+            .join('');
+        return `
+            <article class="measurement-entry-card" data-id="${entry.id}">
+                ${entry.photo_url ? `<img src="${escapeHtml(entry.photo_url)}" alt="Progress photo" class="measurement-photo">` : ''}
+                <div>
+                    <p class="section-label">${escapeHtml(entry.date)}</p>
+                    <div class="measurement-values">${values || '<span>No measurements saved</span>'}</div>
+                </div>
+                <div class="measurement-entry-actions">
+                    <button type="button" class="secondary-btn measurement-edit-btn" data-id="${entry.id}">Edit</button>
+                    <button type="button" class="danger-btn measurement-delete-btn" data-id="${entry.id}">Delete</button>
+                </div>
+            </article>
+        `;
+    }).join('') : '<p class="empty-state">No body measurements logged yet.</p>';
+
+    measurementList.querySelectorAll('.measurement-edit-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            const entry = measurementEntries.find(item => String(item.id) === button.dataset.id);
+            openMeasurementModal(entry);
+        });
+    });
+
+    measurementList.querySelectorAll('.measurement-delete-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            deleteMeasurementEntry(button.dataset.id);
+        });
+    });
+}
+
+function renderMeasurements() {
+    renderMeasurementTabs();
+    renderMeasurementChart();
+    renderMeasurementList();
+}
+
+function buildMeasurementFormData() {
+    const formData = new FormData();
+    formData.append('date', measurementDateInput ? measurementDateInput.value : new Date().toISOString().slice(0, 10));
+    measurementFields.forEach(field => {
+        const input = getMeasurementInput(field.key);
+        if (input && input.value !== '') {
+            formData.append(field.key, input.value);
+        }
+    });
+    if (measurementPhotoInput && measurementPhotoInput.files[0]) {
+        formData.append('photo', measurementPhotoInput.files[0]);
+    }
+    return formData;
+}
+
+function saveMeasurementEntry(event) {
+    event.preventDefault();
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    const entryId = measurementEntryIdInput ? measurementEntryIdInput.value : '';
+    const url = entryId
+        ? `http://127.0.0.1:5000/measurements-data/${entryId}`
+        : 'http://127.0.0.1:5000/measurements-data';
+
+    fetch(url, {
+        method: entryId ? 'PUT' : 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        },
+        body: buildMeasurementFormData()
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage(data.message || 'Measurement saved.', 'success');
+            closeMeasurementModal();
+            loadMeasurements();
+        } else {
+            showMessage(data.message || 'Failed to save measurement.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Save measurement error:', error);
+        showMessage('Failed to save measurement.', 'error');
+    });
+}
+
+function deleteMeasurementEntry(entryId) {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+    if (!window.confirm('Delete this measurement entry?')) {
+        return;
+    }
+
+    fetch(`http://127.0.0.1:5000/measurements-data/${entryId}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage('Measurement deleted.', 'success');
+            loadMeasurements();
+        } else {
+            showMessage(data.message || 'Failed to delete measurement.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Delete measurement error:', error);
+        showMessage('Failed to delete measurement.', 'error');
+    });
+}
+
+function loadMeasurements() {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch('http://127.0.0.1:5000/measurements-data', {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            measurementEntries = Array.isArray(data.data) ? data.data : [];
+            measurementFields = Array.isArray(data.fields) ? data.fields : [];
+            renderMeasurements();
+        } else {
+            showMessage(data.message || 'Failed to load measurements.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Load measurements error:', error);
+        showMessage('Failed to load measurements.', 'error');
     });
 }
 
@@ -2511,6 +3021,48 @@ if (statsRangeSelect) {
     });
 }
 
+if (exerciseLibrarySearch) {
+    exerciseLibrarySearch.addEventListener('input', function () {
+        renderExerciseLibrary();
+    });
+}
+
+if (exerciseLibraryFilter) {
+    exerciseLibraryFilter.addEventListener('change', function () {
+        renderExerciseLibrary();
+    });
+}
+
+if (shareExercisePerformanceButton) {
+    shareExercisePerformanceButton.addEventListener('click', function () {
+        shareExercisePerformance();
+    });
+}
+
+if (openMeasurementModalButton) {
+    openMeasurementModalButton.addEventListener('click', function () {
+        openMeasurementModal();
+    });
+}
+
+if (closeMeasurementModalButton) {
+    closeMeasurementModalButton.addEventListener('click', function () {
+        closeMeasurementModal();
+    });
+}
+
+if (measurementModalOverlay) {
+    measurementModalOverlay.addEventListener('click', function (event) {
+        if (event.target === measurementModalOverlay) {
+            closeMeasurementModal();
+        }
+    });
+}
+
+if (measurementForm) {
+    measurementForm.addEventListener('submit', saveMeasurementEntry);
+}
+
 updateWorkoutButtons();
 
 if (window.location.pathname === '/workouts/current') {
@@ -2542,6 +3094,22 @@ if (window.location.pathname === '/workouts/statistics') {
         window.location.href = '/';
     } else {
         loadStatistics();
+    }
+}
+
+if (window.location.pathname === '/workouts/exercises') {
+    if (!savedToken) {
+        window.location.href = '/';
+    } else {
+        loadExercisePerformance();
+    }
+}
+
+if (window.location.pathname === '/workouts/measures') {
+    if (!savedToken) {
+        window.location.href = '/';
+    } else {
+        loadMeasurements();
     }
 }
 

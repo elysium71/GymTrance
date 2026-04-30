@@ -4,6 +4,7 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 import json
 from pathlib import Path
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 import sqlite3 #SQL database for user authentication
 import re #for password validation
 from datetime import datetime, timedelta 
@@ -24,11 +25,14 @@ WORKOUT_SECTION_FILE = DATA_DIR / "workoutsection.json"
 WORKOUT_HISTORY_FILE = DATA_DIR / "workouthistory.json"
 ROUTINE_FILE = DATA_DIR / "routines.json"
 ROUTINE_FOLDER_FILE = DATA_DIR / "routinefolders.json"
+MEASUREMENT_FILE = DATA_DIR / "measurements.json"
 THUMBNAIL_DIR = DATA_DIR / "thumbnails"
 GIF_DIR = DATA_DIR / "gif"
+MEASUREMENT_PHOTO_DIR = DATA_DIR / "measurement_photos"
 
 THUMBNAIL_DIR.mkdir(exist_ok=True)
 GIF_DIR.mkdir(exist_ok=True)
+MEASUREMENT_PHOTO_DIR.mkdir(exist_ok=True)
 
 if not PRESET_FILE.exists():
     with open(PRESET_FILE, "w", encoding="utf-8") as f:
@@ -48,6 +52,10 @@ if not ROUTINE_FILE.exists():
 
 if not ROUTINE_FOLDER_FILE.exists():
     with open(ROUTINE_FOLDER_FILE, "w", encoding="utf-8") as f:
+        f.write("[]")
+
+if not MEASUREMENT_FILE.exists():
+    with open(MEASUREMENT_FILE, "w", encoding="utf-8") as f:
         f.write("[]")
 
 
@@ -209,6 +217,16 @@ def workout_statistics_page():
     return render_template("workouts_statistics.html")
 
 
+@app.route("/workouts/exercises")
+def workout_exercises_page():
+    return render_template("workouts_exercises.html")
+
+
+@app.route("/workouts/measures")
+def workout_measures_page():
+    return render_template("workouts_measures.html")
+
+
 
 # load data safely
 def load_preset_workouts():
@@ -289,6 +307,23 @@ def load_routine_folders():
 def save_routine_folders(folders):
     with open(ROUTINE_FOLDER_FILE, "w", encoding="utf-8") as file:
         json.dump(folders, file, indent=4)
+
+
+def load_measurements():
+    try:
+        with open(MEASUREMENT_FILE, "r", encoding="utf-8") as file:
+            measurements = json.load(file)
+    except (json.JSONDecodeError, FileNotFoundError):
+        with open(MEASUREMENT_FILE, "w", encoding="utf-8") as file:
+            json.dump([], file)
+        return []
+
+    return measurements if isinstance(measurements, list) else []
+
+
+def save_measurements(measurements):
+    with open(MEASUREMENT_FILE, "w", encoding="utf-8") as file:
+        json.dump(measurements, file, indent=4)
 
 
 def normalize_text(value):
@@ -732,6 +767,251 @@ def build_statistics_for_user(history, current_user, range_key):
     }
 
 
+def estimate_one_rep_max(kg, reps):
+    if not isinstance(kg, (int, float)) or not isinstance(reps, int) or reps <= 0:
+        return 0
+    if reps == 1:
+        return round(kg, 1)
+    return round(kg * (1 + reps / 30), 1)
+
+
+def exercise_performance_key(workout):
+    preset_id = normalize_text(workout.get("preset_id") or workout.get("exerciseId"))
+    if preset_id:
+        return f"preset:{preset_id}"
+    return f"custom:{normalize_text(workout.get('workout')).lower()}"
+
+
+def get_strength_level(exercise_name, estimated_one_rep_max):
+    name = normalize_text(exercise_name).lower()
+    if "bench press" in name:
+        thresholds = [(60, "Beginner"), (100, "Intermediate"), (140, "Advanced"), (180, "Elite")]
+    elif "squat" in name:
+        thresholds = [(80, "Beginner"), (140, "Intermediate"), (200, "Advanced"), (260, "Elite")]
+    elif "deadlift" in name:
+        thresholds = [(100, "Beginner"), (180, "Intermediate"), (260, "Advanced"), (320, "Elite")]
+    else:
+        return {
+            "available": False,
+            "label": "Not available",
+            "description": "Strength level is available for Bench Press, Squat, and Deadlift."
+        }
+
+    level = "Novice"
+    for threshold, label in thresholds:
+        if estimated_one_rep_max >= threshold:
+            level = label
+
+    return {
+        "available": True,
+        "label": level,
+        "description": "Estimated from your best 1RM. Add bodyweight, age, and sex later for a closer Hevy-style comparison."
+    }
+
+
+def update_best_record(best_records, key, value, record):
+    if value <= 0:
+        return
+    if not best_records.get(key) or value > best_records[key]["value"]:
+        best_records[key] = {
+            "value": round(value, 1),
+            **record
+        }
+
+
+def build_exercise_performance_for_user(history, current_user):
+    exercises = {}
+
+    for session in history:
+        if session.get("owner") != current_user:
+            continue
+
+        completed_at = session.get("completed_at", "")
+        parsed_date = parse_completed_at(completed_at)
+        session_id = session.get("id")
+        session_name = session.get("session_name") or "Workout"
+
+        for workout in session.get("completed_workout", []):
+            if not isinstance(workout, dict):
+                continue
+
+            completed_sets = get_completed_sets(workout)
+            if not completed_sets:
+                continue
+
+            key = exercise_performance_key(workout)
+            name = normalize_text(workout.get("workout")) or "Exercise"
+            equipment = normalize_text(workout.get("equipment"))
+            primary_muscles = normalize_string_list(workout.get("primaryMuscles"))
+            secondary_muscles = normalize_string_list(workout.get("secondaryMuscles"))
+            is_custom = not normalize_text(workout.get("preset_id") or workout.get("exerciseId"))
+
+            if key not in exercises:
+                exercises[key] = {
+                    "key": key,
+                    "name": name,
+                    "equipment": equipment,
+                    "primary_muscles": primary_muscles,
+                    "secondary_muscles": secondary_muscles,
+                    "is_custom": is_custom,
+                    "last_logged": completed_at,
+                    "last_logged_sort": parsed_date.timestamp() if parsed_date else 0,
+                    "times_logged": 0,
+                    "total_sets": 0,
+                    "total_volume": 0,
+                    "best": {},
+                    "set_records": {},
+                    "history": []
+                }
+
+            exercise = exercises[key]
+            exercise["times_logged"] += 1
+            session_volume = 0
+            session_reps = 0
+            best_set_volume = 0
+            best_set_label = ""
+
+            if parsed_date and parsed_date.timestamp() > exercise.get("last_logged_sort", 0):
+                exercise["last_logged"] = completed_at
+                exercise["last_logged_sort"] = parsed_date.timestamp()
+
+            for set_item in completed_sets:
+                kg = set_item.get("kg", 0) if isinstance(set_item.get("kg", 0), (int, float)) else 0
+                reps = set_item.get("reps", 0) if isinstance(set_item.get("reps", 0), int) else 0
+                set_volume = kg * reps
+                projected_one_rep_max = estimate_one_rep_max(kg, reps)
+                base_record = {
+                    "kg": kg,
+                    "reps": reps,
+                    "session_id": session_id,
+                    "session_name": session_name,
+                    "completed_at": completed_at
+                }
+
+                exercise["total_sets"] += 1
+                exercise["total_volume"] += set_volume
+                session_volume += set_volume
+                session_reps += reps
+
+                update_best_record(exercise["best"], "heaviest_weight", kg, base_record)
+                update_best_record(exercise["best"], "estimated_1rm", projected_one_rep_max, base_record)
+                update_best_record(exercise["best"], "best_set_volume", set_volume, base_record)
+                update_best_record(exercise["best"], "most_reps", reps, base_record)
+
+                if set_volume > best_set_volume:
+                    best_set_volume = set_volume
+                    best_set_label = f"{kg:g} kg x {reps}"
+
+                reps_key = str(reps)
+                current_record = exercise["set_records"].get(reps_key)
+                if reps > 0 and (not current_record or kg > current_record["kg"]):
+                    exercise["set_records"][reps_key] = {
+                        "reps": reps,
+                        "kg": kg,
+                        "session_id": session_id,
+                        "session_name": session_name,
+                        "completed_at": completed_at
+                    }
+
+            update_best_record(exercise["best"], "best_session_volume", session_volume, {
+                "kg": 0,
+                "reps": session_reps,
+                "session_id": session_id,
+                "session_name": session_name,
+                "completed_at": completed_at
+            })
+
+            exercise["history"].append({
+                "session_id": session_id,
+                "session_name": session_name,
+                "completed_at": completed_at,
+                "sets": len(completed_sets),
+                "volume": round(session_volume, 1),
+                "reps": session_reps,
+                "best_set": best_set_label
+            })
+
+    exercise_list = []
+    for exercise in exercises.values():
+        best_estimated_one_rep_max = exercise["best"].get("estimated_1rm", {}).get("value", 0)
+        exercise["strength_level"] = get_strength_level(exercise["name"], best_estimated_one_rep_max)
+        exercise["set_records"] = sorted(
+            exercise["set_records"].values(),
+            key=lambda item: item["reps"]
+        )
+        exercise["history"].sort(key=lambda item: parse_completed_at(item.get("completed_at")) or datetime.min, reverse=True)
+        exercise["total_volume"] = round(exercise["total_volume"], 1)
+        exercise_list.append(exercise)
+
+    exercise_list.sort(key=lambda item: (item["last_logged_sort"], item["times_logged"]), reverse=True)
+    return exercise_list
+
+
+MEASUREMENT_FIELDS = [
+    "weight",
+    "body_fat",
+    "neck",
+    "shoulders",
+    "chest",
+    "left_bicep",
+    "right_bicep",
+    "left_forearm",
+    "right_forearm",
+    "waist",
+    "hips",
+    "left_thigh",
+    "right_thigh",
+    "left_calf",
+    "right_calf",
+    "abdomen"
+]
+
+
+MEASUREMENT_LABELS = {
+    "weight": "Body Weight",
+    "body_fat": "Body Fat",
+    "neck": "Neck",
+    "shoulders": "Shoulders",
+    "chest": "Chest",
+    "left_bicep": "Left Bicep",
+    "right_bicep": "Right Bicep",
+    "left_forearm": "Left Forearm",
+    "right_forearm": "Right Forearm",
+    "waist": "Waist",
+    "hips": "Hips",
+    "left_thigh": "Left Thigh",
+    "right_thigh": "Right Thigh",
+    "left_calf": "Left Calf",
+    "right_calf": "Right Calf",
+    "abdomen": "Abdomen"
+}
+
+
+def parse_measurement_value(value):
+    if value in (None, ""):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if number < 0:
+        return None
+    return round(number, 1)
+
+
+def normalize_measurement_entry(entry):
+    normalized = dict(entry)
+    measurements = normalized.get("measurements", {})
+    if not isinstance(measurements, dict):
+        measurements = {}
+    normalized["measurements"] = {
+        key: measurements.get(key)
+        for key in MEASUREMENT_FIELDS
+        if measurements.get(key) is not None
+    }
+    return normalized
+
+
 def next_numeric_id(items, floor=9999):
     ids = [
         item.get("id", 0)
@@ -1001,6 +1281,172 @@ def get_statistics_data():
         "message": "Statistics retrieved",
         "data": statistics
     }), 200
+
+
+@app.route("/exercise-performance-data", methods=["GET"])
+@jwt_required()
+def get_exercise_performance_data():
+    current_user = get_jwt_identity()
+    history = load_workout_history()
+    exercises = build_exercise_performance_for_user(history, current_user)
+
+    return jsonify({
+        "status": "success",
+        "message": "Exercise performance retrieved",
+        "data": exercises
+    }), 200
+
+
+@app.route("/measurements-data", methods=["GET"])
+@jwt_required()
+def get_measurements_data():
+    current_user = get_jwt_identity()
+    measurements = load_measurements()
+    user_measurements = [
+        normalize_measurement_entry(item)
+        for item in measurements
+        if item.get("owner") == current_user
+    ]
+    user_measurements.sort(key=lambda item: item.get("date", ""), reverse=True)
+
+    return jsonify({
+        "status": "success",
+        "message": "Measurements retrieved",
+        "fields": [
+            {"key": key, "label": MEASUREMENT_LABELS[key]}
+            for key in MEASUREMENT_FIELDS
+        ],
+        "data": user_measurements
+    }), 200
+
+
+@app.route("/measurements-data", methods=["POST"])
+@jwt_required()
+def create_measurement_data():
+    current_user = get_jwt_identity()
+    measurements = load_measurements()
+    entry_date = normalize_text(request.form.get("date")) or datetime.now().strftime("%Y-%m-%d")
+
+    try:
+        datetime.strptime(entry_date, "%Y-%m-%d")
+    except ValueError:
+        return jsonify({"status": "error", "message": "Date must use YYYY-MM-DD"}), 400
+
+    measurement_values = {}
+    for field in MEASUREMENT_FIELDS:
+        parsed_value = parse_measurement_value(request.form.get(field))
+        if parsed_value is not None:
+            measurement_values[field] = parsed_value
+
+    photo_url = ""
+    photo_file = request.files.get("photo")
+    if photo_file and photo_file.filename:
+        safe_name = secure_filename(photo_file.filename)
+        suffix = Path(safe_name).suffix.lower()
+        if suffix not in {".jpg", ".jpeg", ".png", ".webp"}:
+            return jsonify({"status": "error", "message": "Progress photo must be JPG, PNG, or WEBP"}), 400
+        photo_name = f"{current_user}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}{suffix}"
+        photo_path = MEASUREMENT_PHOTO_DIR / photo_name
+        photo_file.save(photo_path)
+        photo_url = f"/measurement-photo/{photo_name}"
+
+    if not measurement_values and not photo_url:
+        return jsonify({"status": "error", "message": "Add at least one measurement or photo"}), 400
+
+    entry = {
+        "id": next_numeric_id(measurements),
+        "owner": current_user,
+        "date": entry_date,
+        "measurements": measurement_values,
+        "photo_url": photo_url,
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M")
+    }
+    measurements.append(entry)
+    save_measurements(measurements)
+
+    return jsonify({
+        "status": "success",
+        "message": "Measurement saved",
+        "data": entry
+    }), 201
+
+
+@app.route("/measurements-data/<int:measurement_id>", methods=["PUT"])
+@jwt_required()
+def update_measurement_data(measurement_id):
+    current_user = get_jwt_identity()
+    measurements = load_measurements()
+    entry = next((item for item in measurements if item.get("id") == measurement_id), None)
+
+    if not entry:
+        return jsonify({"status": "error", "message": "Measurement not found"}), 404
+    if entry.get("owner") != current_user:
+        return jsonify({"status": "error", "message": "You are not allowed to update this measurement"}), 403
+
+    entry_date = normalize_text(request.form.get("date")) or entry.get("date")
+    try:
+        datetime.strptime(entry_date, "%Y-%m-%d")
+    except ValueError:
+        return jsonify({"status": "error", "message": "Date must use YYYY-MM-DD"}), 400
+
+    measurement_values = {}
+    for field in MEASUREMENT_FIELDS:
+        parsed_value = parse_measurement_value(request.form.get(field))
+        if parsed_value is not None:
+            measurement_values[field] = parsed_value
+
+    photo_file = request.files.get("photo")
+    if photo_file and photo_file.filename:
+        safe_name = secure_filename(photo_file.filename)
+        suffix = Path(safe_name).suffix.lower()
+        if suffix not in {".jpg", ".jpeg", ".png", ".webp"}:
+            return jsonify({"status": "error", "message": "Progress photo must be JPG, PNG, or WEBP"}), 400
+        photo_name = f"{current_user}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}{suffix}"
+        photo_path = MEASUREMENT_PHOTO_DIR / photo_name
+        photo_file.save(photo_path)
+        entry["photo_url"] = f"/measurement-photo/{photo_name}"
+
+    if not measurement_values and not entry.get("photo_url"):
+        return jsonify({"status": "error", "message": "Add at least one measurement or photo"}), 400
+
+    entry["date"] = entry_date
+    entry["measurements"] = measurement_values
+    save_measurements(measurements)
+
+    return jsonify({
+        "status": "success",
+        "message": "Measurement updated",
+        "data": entry
+    }), 200
+
+
+@app.route("/measurements-data/<int:measurement_id>", methods=["DELETE"])
+@jwt_required()
+def delete_measurement_data(measurement_id):
+    current_user = get_jwt_identity()
+    measurements = load_measurements()
+    entry = next((item for item in measurements if item.get("id") == measurement_id), None)
+
+    if not entry:
+        return jsonify({"status": "error", "message": "Measurement not found"}), 404
+    if entry.get("owner") != current_user:
+        return jsonify({"status": "error", "message": "You are not allowed to delete this measurement"}), 403
+
+    measurements.remove(entry)
+    save_measurements(measurements)
+
+    return jsonify({
+        "status": "success",
+        "message": "Measurement deleted"
+    }), 200
+
+
+@app.route("/measurement-photo/<filename>")
+def measurement_photo(filename):
+    photo_path = MEASUREMENT_PHOTO_DIR / secure_filename(filename)
+    if photo_path.exists():
+        return send_file(photo_path)
+    return ("", 404)
 
 
 @app.route("/routines", methods=["GET"])

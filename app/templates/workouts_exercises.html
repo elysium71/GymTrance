@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Exercise Performance - GymTrance</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    </head>
+    <body>
+        <div class="page-shell">
+            <button type="button" class="back-page-btn" data-back-url="/workouts">Back</button>
+
+            <header class="hero">
+                <div class="hero-copy">
+                    <p class="eyebrow">Performance</p>
+                    <h1>Exercises</h1>
+                    <p class="hero-text">
+                        Search your logged movements and open detailed personal records, set records, and history.
+                    </p>
+                </div>
+
+                <div class="hero-side">
+                    <button type="button" id="logout-btn" class="ghost-btn hero-logout">Logout</button>
+                </div>
+            </header>
+
+            <main class="dashboard">
+                <section class="panel content-panel exercise-performance-panel">
+                    <div id="message-box" class="message-box"></div>
+
+                    <div class="exercise-library-toolbar">
+                        <label>
+                            <span>Search</span>
+                            <input type="search" id="exercise-library-search" placeholder="Search exercises">
+                        </label>
+                        <label>
+                            <span>Filter</span>
+                            <select id="exercise-library-filter">
+                                <option value="">All exercises</option>
+                                <option value="recent">Recently logged</option>
+                                <option value="custom">Custom exercises</option>
+                                <option value="strength">Strength level lifts</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="exercise-performance-layout">
+                        <aside class="exercise-library-card">
+                            <div class="stats-card-heading">
+                                <p class="section-label">Library</p>
+                                <h2>Logged Exercises</h2>
+                            </div>
+                            <div id="exercise-library-list" class="exercise-library-list"></div>
+                        </aside>
+
+                        <section class="exercise-detail-card">
+                            <div id="exercise-detail-empty" class="empty-state">Choose an exercise to view performance.</div>
+                            <div id="exercise-detail-content" hidden>
+                                <div class="exercise-detail-header">
+                                    <div>
+                                        <p class="section-label">Summary</p>
+                                        <h2 id="exercise-detail-title">Exercise</h2>
+                                        <p id="exercise-detail-subtitle"></p>
+                                    </div>
+                                    <button type="button" id="share-exercise-performance-btn" class="secondary-btn">Share</button>
+                                </div>
+
+                                <div id="exercise-best-grid" class="exercise-best-grid"></div>
+
+                                <div class="exercise-detail-grid">
+                                    <article class="stats-card">
+                                        <div class="stats-card-heading">
+                                            <p class="section-label">Set Records</p>
+                                            <h3>Best Weight by Reps</h3>
+                                        </div>
+                                        <div id="exercise-set-records" class="exercise-record-list"></div>
+                                    </article>
+
+                                    <article class="stats-card">
+                                        <div class="stats-card-heading">
+                                            <p class="section-label">Strength Level</p>
+                                            <h3>Estimated Level</h3>
+                                        </div>
+                                        <div id="exercise-strength-level" class="exercise-strength-level"></div>
+                                    </article>
+                                </div>
+
+                                <article class="stats-card">
+                                    <div class="stats-card-heading">
+                                        <p class="section-label">History</p>
+                                        <h3>Workout to Workout</h3>
+                                    </div>
+                                    <div id="exercise-history-list" class="exercise-history-list"></div>
+                                </article>
+                            </div>
+                        </section>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    </body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Body Measurements - GymTrance</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    </head>
+    <body>
+        <div class="page-shell">
+            <button type="button" class="back-page-btn" data-back-url="/workouts">Back</button>
+
+            <header class="hero">
+                <div class="hero-copy">
+                    <p class="eyebrow">Profile</p>
+                    <h1>Body Measurements</h1>
+                    <p class="hero-text">
+                        Track body weight, body fat, circumference changes, and progress photos.
+                    </p>
+                </div>
+
+                <div class="hero-side">
+                    <button type="button" id="logout-btn" class="ghost-btn hero-logout">Logout</button>
+                </div>
+            </header>
+
+            <main class="dashboard">
+                <section class="panel content-panel measures-panel">
+                    <div id="message-box" class="message-box"></div>
+
+                    <div class="section-header workout-header">
+                        <div>
+                            <p class="section-label">Measures</p>
+                            <h2>Progress Log</h2>
+                        </div>
+                        <button type="button" id="open-measurement-modal-btn" class="secondary-btn">+ Add Entry</button>
+                    </div>
+
+                    <div class="measure-tabs" id="measure-tabs"></div>
+
+                    <article class="stats-card measure-chart-card">
+                        <div class="stats-card-heading">
+                            <p class="section-label">Graph</p>
+                            <h3 id="measure-chart-title">Body Weight</h3>
+                        </div>
+                        <div id="measure-chart" class="measure-chart"></div>
+                    </article>
+
+                    <div id="measurement-list" class="measurement-list"></div>
+                </section>
+            </main>
+        </div>
+
+        <div id="measurement-modal-overlay" class="preset-modal-overlay" style="display: none;">
+            <div class="preset-modal measurement-modal">
+                <div class="preset-modal-header">
+                    <div>
+                        <p class="section-label">Measurement Entry</p>
+                        <h3 id="measurement-modal-title">Add Measurements</h3>
+                    </div>
+                    <button type="button" id="close-measurement-modal-btn" class="ghost-btn modal-close-btn">Close</button>
+                </div>
+
+                <form id="measurement-form" class="measurement-form">
+                    <input type="hidden" id="measurement-entry-id">
+
+                    <label class="routine-field">
+                        <span>Date</span>
+                        <input type="date" id="measurement-date-input" required>
+                    </label>
+
+                    <label class="routine-field">
+                        <span>Progress Photo</span>
+                        <input type="file" id="measurement-photo-input" accept="image/png,image/jpeg,image/webp">
+                    </label>
+
+                    <div class="measurement-grid">
+                        <label><span>Body Weight (kg)</span><input type="number" step="0.1" min="0" id="measure-weight"></label>
+                        <label><span>Body Fat (%)</span><input type="number" step="0.1" min="0" id="measure-body_fat"></label>
+                        <label><span>Neck</span><input type="number" step="0.1" min="0" id="measure-neck"></label>
+                        <label><span>Shoulders</span><input type="number" step="0.1" min="0" id="measure-shoulders"></label>
+                        <label><span>Chest</span><input type="number" step="0.1" min="0" id="measure-chest"></label>
+                        <label><span>Left Bicep</span><input type="number" step="0.1" min="0" id="measure-left_bicep"></label>
+                        <label><span>Right Bicep</span><input type="number" step="0.1" min="0" id="measure-right_bicep"></label>
+                        <label><span>Left Forearm</span><input type="number" step="0.1" min="0" id="measure-left_forearm"></label>
+                        <label><span>Right Forearm</span><input type="number" step="0.1" min="0" id="measure-right_forearm"></label>
+                        <label><span>Waist</span><input type="number" step="0.1" min="0" id="measure-waist"></label>
+                        <label><span>Abdomen</span><input type="number" step="0.1" min="0" id="measure-abdomen"></label>
+                        <label><span>Hips</span><input type="number" step="0.1" min="0" id="measure-hips"></label>
+                        <label><span>Left Thigh</span><input type="number" step="0.1" min="0" id="measure-left_thigh"></label>
+                        <label><span>Right Thigh</span><input type="number" step="0.1" min="0" id="measure-right_thigh"></label>
+                        <label><span>Left Calf</span><input type="number" step="0.1" min="0" id="measure-left_calf"></label>
+                        <label><span>Right Calf</span><input type="number" step="0.1" min="0" id="measure-right_calf"></label>
+                    </div>
+
+                    <div class="preset-modal-actions">
+                        <button type="submit">Save Measurements</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    </body>
+</html>
