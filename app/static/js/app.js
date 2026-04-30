@@ -88,6 +88,25 @@ const measurementTabs = document.querySelector('#measure-tabs');
 const measurementChart = document.querySelector('#measure-chart');
 const measurementChartTitle = document.querySelector('#measure-chart-title');
 const measurementList = document.querySelector('#measurement-list');
+const progressPhotoStrip = document.querySelector('#progress-photo-strip');
+const seeAllProgressPhotosButton = document.querySelector('#see-all-progress-photos-btn');
+const progressPhotoModalOverlay = document.querySelector('#progress-photo-modal-overlay');
+const closeProgressPhotoModalButton = document.querySelector('#close-progress-photo-modal-btn');
+const progressPhotoLibrary = document.querySelector('#progress-photo-library');
+const progressPhotoActionOverlay = document.querySelector('#progress-photo-action-overlay');
+const closeProgressPhotoActionButton = document.querySelector('#close-progress-photo-action-btn');
+const progressPhotoActionDate = document.querySelector('#progress-photo-action-date');
+const progressPhotoActionImage = document.querySelector('#progress-photo-action-image');
+const compareProgressPhotoButton = document.querySelector('#compare-progress-photo-btn');
+const editProgressPhotoEntryButton = document.querySelector('#edit-progress-photo-entry-btn');
+const shareProgressPhotoButton = document.querySelector('#share-progress-photo-btn');
+const replaceProgressPhotoButton = document.querySelector('#replace-progress-photo-btn');
+const deleteProgressPhotoButton = document.querySelector('#delete-progress-photo-btn');
+const replaceProgressPhotoInput = document.querySelector('#replace-progress-photo-input');
+const progressPhotoCompareOverlay = document.querySelector('#progress-photo-compare-overlay');
+const closeProgressPhotoCompareButton = document.querySelector('#close-progress-photo-compare-btn');
+const progressPhotoCompareSelect = document.querySelector('#progress-photo-compare-select');
+const progressPhotoCompareView = document.querySelector('#progress-photo-compare-view');
 
 const savedToken = localStorage.getItem('access_token');
 let pendingSetContext = null;
@@ -102,6 +121,7 @@ let activeExercisePerformance = null;
 let measurementEntries = [];
 let measurementFields = [];
 let activeMeasurementField = 'weight';
+let activeProgressPhotoEntry = null;
 
 const SET_TYPE_META = {
     warmup: { code: 'W', label: 'Warm Up' },
@@ -2378,6 +2398,123 @@ function closeMeasurementModal() {
     }
 }
 
+function getProgressPhotoEntries() {
+    return measurementEntries.filter(entry => entry.photo_url);
+}
+
+function openProgressPhotoAction(entry) {
+    if (!entry || !progressPhotoActionOverlay || !progressPhotoActionImage) {
+        return;
+    }
+
+    activeProgressPhotoEntry = entry;
+    progressPhotoActionImage.src = entry.photo_url;
+    if (progressPhotoActionDate) {
+        progressPhotoActionDate.textContent = entry.date || 'Progress Photo';
+    }
+    progressPhotoActionOverlay.style.display = 'flex';
+}
+
+function closeProgressPhotoAction() {
+    if (progressPhotoActionOverlay) {
+        progressPhotoActionOverlay.style.display = 'none';
+    }
+}
+
+function renderProgressPhotoButtons(target, entries) {
+    if (!target) {
+        return;
+    }
+
+    target.innerHTML = entries.length ? entries.map(entry => `
+        <button type="button" class="progress-photo-card" data-id="${entry.id}">
+            <img src="${escapeHtml(entry.photo_url)}" alt="Progress photo from ${escapeHtml(entry.date)}">
+            <span>${escapeHtml(entry.date)}</span>
+        </button>
+    `).join('') : '<p class="empty-state">No progress photos yet.</p>';
+
+    target.querySelectorAll('.progress-photo-card').forEach(button => {
+        button.addEventListener('click', function () {
+            const entry = measurementEntries.find(item => String(item.id) === button.dataset.id);
+            openProgressPhotoAction(entry);
+        });
+    });
+}
+
+function renderProgressPhotos() {
+    const photoEntries = getProgressPhotoEntries();
+    renderProgressPhotoButtons(progressPhotoStrip, photoEntries.slice(0, 6));
+    renderProgressPhotoButtons(progressPhotoLibrary, photoEntries);
+}
+
+function openProgressPhotoLibrary() {
+    if (progressPhotoModalOverlay) {
+        renderProgressPhotos();
+        progressPhotoModalOverlay.style.display = 'flex';
+    }
+}
+
+function closeProgressPhotoLibrary() {
+    if (progressPhotoModalOverlay) {
+        progressPhotoModalOverlay.style.display = 'none';
+    }
+}
+
+function renderProgressPhotoCompare() {
+    if (!activeProgressPhotoEntry || !progressPhotoCompareSelect || !progressPhotoCompareView) {
+        return;
+    }
+
+    const photoEntries = getProgressPhotoEntries().filter(entry => entry.id !== activeProgressPhotoEntry.id);
+    progressPhotoCompareSelect.innerHTML = photoEntries.map(entry => (
+        `<option value="${entry.id}">${escapeHtml(entry.date)}</option>`
+    )).join('');
+
+    const comparisonEntry = photoEntries.find(entry => String(entry.id) === progressPhotoCompareSelect.value) || photoEntries[0];
+    progressPhotoCompareView.innerHTML = comparisonEntry ? `
+        <figure>
+            <img src="${escapeHtml(activeProgressPhotoEntry.photo_url)}" alt="Current progress photo">
+            <figcaption>${escapeHtml(activeProgressPhotoEntry.date)}</figcaption>
+        </figure>
+        <figure>
+            <img src="${escapeHtml(comparisonEntry.photo_url)}" alt="Comparison progress photo">
+            <figcaption>${escapeHtml(comparisonEntry.date)}</figcaption>
+        </figure>
+    ` : '<p class="empty-state">Add another progress photo to compare.</p>';
+}
+
+function openProgressPhotoCompare() {
+    if (!progressPhotoCompareOverlay) {
+        return;
+    }
+
+    closeProgressPhotoAction();
+    renderProgressPhotoCompare();
+    progressPhotoCompareOverlay.style.display = 'flex';
+}
+
+function closeProgressPhotoCompare() {
+    if (progressPhotoCompareOverlay) {
+        progressPhotoCompareOverlay.style.display = 'none';
+    }
+}
+
+function shareProgressPhoto() {
+    if (!activeProgressPhotoEntry) {
+        return;
+    }
+
+    const text = `GymTrance progress photo\nDate: ${activeProgressPhotoEntry.date}\n${window.location.origin}${activeProgressPhotoEntry.photo_url}`;
+    if (navigator.share) {
+        navigator.share({ title: 'GymTrance Progress Photo', text }).catch(() => {});
+        return;
+    }
+
+    navigator.clipboard.writeText(text)
+        .then(() => showMessage('Progress photo link copied.', 'success'))
+        .catch(() => showMessage('Could not copy progress photo link.', 'error'));
+}
+
 function renderMeasurementTabs() {
     if (!measurementTabs) {
         return;
@@ -2489,6 +2626,7 @@ function renderMeasurementList() {
 }
 
 function renderMeasurements() {
+    renderProgressPhotos();
     renderMeasurementTabs();
     renderMeasurementChart();
     renderMeasurementList();
@@ -2573,6 +2711,69 @@ function deleteMeasurementEntry(entryId) {
     .catch(error => {
         console.error('Delete measurement error:', error);
         showMessage('Failed to delete measurement.', 'error');
+    });
+}
+
+function replaceProgressPhoto(file) {
+    const token = localStorage.getItem('access_token');
+    if (!token || !activeProgressPhotoEntry || !file) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('photo', file);
+
+    fetch(`http://127.0.0.1:5000/measurements-data/${activeProgressPhotoEntry.id}/photo`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage('Progress photo replaced.', 'success');
+            closeProgressPhotoAction();
+            loadMeasurements();
+        } else {
+            showMessage(data.message || 'Failed to replace progress photo.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Replace progress photo error:', error);
+        showMessage('Failed to replace progress photo.', 'error');
+    });
+}
+
+function deleteProgressPhoto() {
+    const token = localStorage.getItem('access_token');
+    if (!token || !activeProgressPhotoEntry) {
+        return;
+    }
+    if (!window.confirm('Delete this progress photo?')) {
+        return;
+    }
+
+    fetch(`http://127.0.0.1:5000/measurements-data/${activeProgressPhotoEntry.id}/photo`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage('Progress photo deleted.', 'success');
+            closeProgressPhotoAction();
+            loadMeasurements();
+        } else {
+            showMessage(data.message || 'Failed to delete progress photo.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Delete progress photo error:', error);
+        showMessage('Failed to delete progress photo.', 'error');
     });
 }
 
@@ -3061,6 +3262,86 @@ if (measurementModalOverlay) {
 
 if (measurementForm) {
     measurementForm.addEventListener('submit', saveMeasurementEntry);
+}
+
+if (seeAllProgressPhotosButton) {
+    seeAllProgressPhotosButton.addEventListener('click', openProgressPhotoLibrary);
+}
+
+if (closeProgressPhotoModalButton) {
+    closeProgressPhotoModalButton.addEventListener('click', closeProgressPhotoLibrary);
+}
+
+if (progressPhotoModalOverlay) {
+    progressPhotoModalOverlay.addEventListener('click', function (event) {
+        if (event.target === progressPhotoModalOverlay) {
+            closeProgressPhotoLibrary();
+        }
+    });
+}
+
+if (closeProgressPhotoActionButton) {
+    closeProgressPhotoActionButton.addEventListener('click', closeProgressPhotoAction);
+}
+
+if (progressPhotoActionOverlay) {
+    progressPhotoActionOverlay.addEventListener('click', function (event) {
+        if (event.target === progressPhotoActionOverlay) {
+            closeProgressPhotoAction();
+        }
+    });
+}
+
+if (compareProgressPhotoButton) {
+    compareProgressPhotoButton.addEventListener('click', openProgressPhotoCompare);
+}
+
+if (editProgressPhotoEntryButton) {
+    editProgressPhotoEntryButton.addEventListener('click', function () {
+        if (activeProgressPhotoEntry) {
+            closeProgressPhotoAction();
+            openMeasurementModal(activeProgressPhotoEntry);
+        }
+    });
+}
+
+if (shareProgressPhotoButton) {
+    shareProgressPhotoButton.addEventListener('click', shareProgressPhoto);
+}
+
+if (replaceProgressPhotoButton) {
+    replaceProgressPhotoButton.addEventListener('click', function () {
+        if (replaceProgressPhotoInput) {
+            replaceProgressPhotoInput.click();
+        }
+    });
+}
+
+if (replaceProgressPhotoInput) {
+    replaceProgressPhotoInput.addEventListener('change', function () {
+        replaceProgressPhoto(replaceProgressPhotoInput.files[0]);
+        replaceProgressPhotoInput.value = '';
+    });
+}
+
+if (deleteProgressPhotoButton) {
+    deleteProgressPhotoButton.addEventListener('click', deleteProgressPhoto);
+}
+
+if (closeProgressPhotoCompareButton) {
+    closeProgressPhotoCompareButton.addEventListener('click', closeProgressPhotoCompare);
+}
+
+if (progressPhotoCompareOverlay) {
+    progressPhotoCompareOverlay.addEventListener('click', function (event) {
+        if (event.target === progressPhotoCompareOverlay) {
+            closeProgressPhotoCompare();
+        }
+    });
+}
+
+if (progressPhotoCompareSelect) {
+    progressPhotoCompareSelect.addEventListener('change', renderProgressPhotoCompare);
 }
 
 updateWorkoutButtons();

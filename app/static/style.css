@@ -2959,3 +2959,143 @@ select:focus,
         grid-template-columns: 1fr;
     }
 }
+
+.progress-photo-section {
+    display: grid;
+    gap: 14px;
+}
+
+.progress-photo-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 0;
+}
+
+.progress-photo-strip,
+.progress-photo-library {
+    display: grid;
+    gap: 12px;
+}
+
+.progress-photo-strip {
+    grid-template-columns: repeat(6, minmax(120px, 1fr));
+    overflow-x: auto;
+}
+
+.progress-photo-library {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.progress-photo-card {
+    display: grid;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid rgba(190, 205, 224, 0.12);
+    border-radius: 14px;
+    background: #141b24;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+}
+
+.progress-photo-card:hover {
+    border-color: rgba(255, 122, 61, 0.34);
+    background: #18212b;
+}
+
+.progress-photo-card img {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+
+.progress-photo-card span {
+    color: var(--muted);
+    font-size: 0.84rem;
+    font-weight: 800;
+}
+
+.progress-photo-modal {
+    width: min(820px, 100%);
+}
+
+.progress-photo-action-modal {
+    width: min(520px, 100%);
+}
+
+.progress-photo-action-image {
+    display: block;
+    width: 100%;
+    max-height: 520px;
+    object-fit: contain;
+    border-radius: 16px;
+    background: #f8fafc;
+}
+
+.progress-photo-action-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.progress-photo-action-grid .danger-btn {
+    grid-column: 1 / -1;
+}
+
+.progress-photo-compare-modal {
+    width: min(920px, 100%);
+}
+
+.progress-photo-compare-picker {
+    margin-bottom: 14px;
+}
+
+.progress-photo-compare-picker label {
+    display: grid;
+    gap: 8px;
+    color: var(--muted);
+    font-weight: 800;
+}
+
+.progress-photo-compare-view {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.progress-photo-compare-view figure {
+    margin: 0;
+    display: grid;
+    gap: 8px;
+}
+
+.progress-photo-compare-view img {
+    width: 100%;
+    max-height: 620px;
+    object-fit: contain;
+    border-radius: 16px;
+    background: #f8fafc;
+}
+
+.progress-photo-compare-view figcaption {
+    color: var(--muted);
+    font-weight: 800;
+    text-align: center;
+}
+
+@media (max-width: 760px) {
+    .progress-photo-strip {
+        grid-template-columns: repeat(6, minmax(110px, 1fr));
+    }
+
+    .progress-photo-library,
+    .progress-photo-compare-view,
+    .progress-photo-action-grid {
+        grid-template-columns: 1fr;
+    }
+}

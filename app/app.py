@@ -1420,6 +1420,62 @@ def update_measurement_data(measurement_id):
     }), 200
 
 
+@app.route("/measurements-data/<int:measurement_id>/photo", methods=["PUT"])
+@jwt_required()
+def replace_measurement_photo(measurement_id):
+    current_user = get_jwt_identity()
+    measurements = load_measurements()
+    entry = next((item for item in measurements if item.get("id") == measurement_id), None)
+
+    if not entry:
+        return jsonify({"status": "error", "message": "Measurement not found"}), 404
+    if entry.get("owner") != current_user:
+        return jsonify({"status": "error", "message": "You are not allowed to update this photo"}), 403
+
+    photo_file = request.files.get("photo")
+    if not photo_file or not photo_file.filename:
+        return jsonify({"status": "error", "message": "Choose a progress photo"}), 400
+
+    safe_name = secure_filename(photo_file.filename)
+    suffix = Path(safe_name).suffix.lower()
+    if suffix not in {".jpg", ".jpeg", ".png", ".webp"}:
+        return jsonify({"status": "error", "message": "Progress photo must be JPG, PNG, or WEBP"}), 400
+
+    photo_name = f"{current_user}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}{suffix}"
+    photo_file.save(MEASUREMENT_PHOTO_DIR / photo_name)
+    entry["photo_url"] = f"/measurement-photo/{photo_name}"
+    save_measurements(measurements)
+
+    return jsonify({
+        "status": "success",
+        "message": "Progress photo replaced",
+        "data": entry
+    }), 200
+
+
+@app.route("/measurements-data/<int:measurement_id>/photo", methods=["DELETE"])
+@jwt_required()
+def delete_measurement_photo(measurement_id):
+    current_user = get_jwt_identity()
+    measurements = load_measurements()
+    entry = next((item for item in measurements if item.get("id") == measurement_id), None)
+
+    if not entry:
+        return jsonify({"status": "error", "message": "Measurement not found"}), 404
+    if entry.get("owner") != current_user:
+        return jsonify({"status": "error", "message": "You are not allowed to delete this photo"}), 403
+
+    entry["photo_url"] = ""
+    if not entry.get("measurements"):
+        measurements.remove(entry)
+    save_measurements(measurements)
+
+    return jsonify({
+        "status": "success",
+        "message": "Progress photo deleted"
+    }), 200
+
+
 @app.route("/measurements-data/<int:measurement_id>", methods=["DELETE"])
 @jwt_required()
 def delete_measurement_data(measurement_id):
