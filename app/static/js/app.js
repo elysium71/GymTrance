@@ -20,6 +20,25 @@ const muscleSplitModalOverlay = document.querySelector('#muscle-split-modal-over
 const closeMuscleSplitButton = document.querySelector('#close-muscle-split-btn');
 const muscleSplitList = document.querySelector('#muscle-split-list');
 const muscleMapBody = document.querySelector('#muscle-map-body');
+const sessionDurationDisplay = document.querySelector('#session-duration-display');
+const sessionVolumeDisplay = document.querySelector('#session-volume-display');
+const sessionSetsDisplay = document.querySelector('#session-sets-display');
+const pauseSessionButton = document.querySelector('#pause-session-btn');
+const plateCalculatorOverlay = document.querySelector('#plate-calculator-modal-overlay');
+const closePlateCalculatorButton = document.querySelector('#close-plate-calculator-btn');
+const plateTargetInput = document.querySelector('#plate-target-input');
+const plateBarInput = document.querySelector('#plate-bar-input');
+const plateCalculatorResult = document.querySelector('#plate-calculator-result');
+const finishWorkoutModalOverlay = document.querySelector('#finish-workout-modal-overlay');
+const closeFinishWorkoutModalButton = document.querySelector('#close-finish-workout-modal-btn');
+const finishWorkoutForm = document.querySelector('#finish-workout-form');
+const finishSessionNameInput = document.querySelector('#finish-session-name-input');
+const finishSessionDateInput = document.querySelector('#finish-session-date-input');
+const finishSessionNoteInput = document.querySelector('#finish-session-note-input');
+const finishSessionPrivateInput = document.querySelector('#finish-session-private-input');
+const finishDurationSummary = document.querySelector('#finish-duration-summary');
+const finishVolumeSummary = document.querySelector('#finish-volume-summary');
+const finishSetsSummary = document.querySelector('#finish-sets-summary');
 
 const openPresetModalButton = document.querySelector('#open-preset-modal-btn');
 const closePresetModalButton = document.querySelector('#close-preset-modal-btn');
@@ -107,6 +126,35 @@ const progressPhotoCompareOverlay = document.querySelector('#progress-photo-comp
 const closeProgressPhotoCompareButton = document.querySelector('#close-progress-photo-compare-btn');
 const progressPhotoCompareSelect = document.querySelector('#progress-photo-compare-select');
 const progressPhotoCompareView = document.querySelector('#progress-photo-compare-view');
+const calendarGrid = document.querySelector('#calendar-grid');
+const calendarTitle = document.querySelector('#calendar-title');
+const calendarDayDetail = document.querySelector('#calendar-day-detail');
+const calendarActiveStreak = document.querySelector('#calendar-active-streak');
+const calendarRestDays = document.querySelector('#calendar-rest-days');
+const calendarPrevButton = document.querySelector('#calendar-prev-btn');
+const calendarNextButton = document.querySelector('#calendar-next-btn');
+const calendarTodayButton = document.querySelector('#calendar-today-btn');
+const calendarShareButton = document.querySelector('#share-calendar-btn');
+const calendarViewButtons = document.querySelectorAll('.calendar-view-btn');
+const calendarWeekStartSelect = document.querySelector('#calendar-week-start-select');
+const openCalendarLogButton = document.querySelector('#open-calendar-log-btn');
+const calendarLogModalOverlay = document.querySelector('#calendar-log-modal-overlay');
+const closeCalendarLogModalButton = document.querySelector('#close-calendar-log-modal-btn');
+const calendarLogForm = document.querySelector('#calendar-log-form');
+const calendarLogDateInput = document.querySelector('#calendar-log-date-input');
+const calendarLogNameInput = document.querySelector('#calendar-log-name-input');
+const socialFeedTabs = document.querySelectorAll('.social-feed-tab');
+const socialSuggestedList = document.querySelector('#social-suggested-list');
+const socialFeedList = document.querySelector('#social-feed-list');
+const socialProfileForm = document.querySelector('#social-profile-form');
+const socialBioInput = document.querySelector('#social-bio-input');
+const socialPrivateInput = document.querySelector('#social-private-input');
+const socialHideSuggestionsInput = document.querySelector('#social-hide-suggestions-input');
+const socialLeaderboardList = document.querySelector('#social-leaderboard-list');
+const socialProfileModalOverlay = document.querySelector('#social-profile-modal-overlay');
+const closeSocialProfileModalButton = document.querySelector('#close-social-profile-modal-btn');
+const socialProfileTitle = document.querySelector('#social-profile-title');
+const socialProfileBody = document.querySelector('#social-profile-body');
 
 const savedToken = localStorage.getItem('access_token');
 let pendingSetContext = null;
@@ -122,6 +170,15 @@ let measurementEntries = [];
 let measurementFields = [];
 let activeMeasurementField = 'weight';
 let activeProgressPhotoEntry = null;
+let calendarHistory = [];
+let calendarDate = new Date();
+let calendarView = 'month';
+let calendarWeekStart = Number(localStorage.getItem('calendar_week_start') || 0);
+let selectedCalendarDate = new Date().toISOString().slice(0, 10);
+let activeWorkoutsCache = [];
+let activePlateRow = null;
+let sessionTimerInterval = null;
+let activeSocialFeed = 'discover';
 
 const SET_TYPE_META = {
     warmup: { code: 'W', label: 'Warm Up' },
@@ -179,6 +236,84 @@ function formatTitleCase(value) {
             .map(part => part ? `${part.charAt(0).toUpperCase()}${part.slice(1)}` : '')
             .join('-'))
         .join(' ');
+}
+
+function formatDuration(seconds) {
+    const safeSeconds = Math.max(0, Number(seconds) || 0);
+    const hours = Math.floor(safeSeconds / 3600);
+    const minutes = Math.floor((safeSeconds % 3600) / 60);
+    const secs = safeSeconds % 60;
+
+    if (hours > 0) {
+        return `${hours}h ${minutes}m ${String(secs).padStart(2, '0')}s`;
+    }
+    return `${minutes}m ${String(secs).padStart(2, '0')}s`;
+}
+
+function getSessionState() {
+    const startedAt = Number(localStorage.getItem('gymtrance_session_started_at')) || Date.now();
+    const pausedAt = Number(localStorage.getItem('gymtrance_session_paused_at')) || 0;
+    const pausedTotal = Number(localStorage.getItem('gymtrance_session_paused_total')) || 0;
+
+    if (!localStorage.getItem('gymtrance_session_started_at')) {
+        localStorage.setItem('gymtrance_session_started_at', String(startedAt));
+    }
+
+    return { startedAt, pausedAt, pausedTotal };
+}
+
+function getSessionDurationSeconds() {
+    const state = getSessionState();
+    const now = state.pausedAt || Date.now();
+    return Math.max(0, Math.floor((now - state.startedAt - state.pausedTotal) / 1000));
+}
+
+function resetSessionTimer() {
+    localStorage.removeItem('gymtrance_session_started_at');
+    localStorage.removeItem('gymtrance_session_paused_at');
+    localStorage.removeItem('gymtrance_session_paused_total');
+}
+
+function getActiveWorkoutTotals() {
+    let sets = 0;
+    let volume = 0;
+
+    document.querySelectorAll('.set-row').forEach(row => {
+        if (row.dataset.done !== 'true') {
+            return;
+        }
+
+        const kg = Number(row.querySelector('.kg-field')?.value || 0);
+        const reps = Number(row.querySelector('.reps-field')?.value || 0);
+        sets += 1;
+        volume += kg * reps;
+    });
+
+    return { sets, volume: Math.round(volume * 10) / 10 };
+}
+
+function updateSessionSummary() {
+    const duration = getSessionDurationSeconds();
+    const totals = getActiveWorkoutTotals();
+
+    if (sessionDurationDisplay) {
+        sessionDurationDisplay.textContent = formatDuration(duration);
+    }
+    if (sessionVolumeDisplay) {
+        sessionVolumeDisplay.textContent = `${totals.volume} kg`;
+    }
+    if (sessionSetsDisplay) {
+        sessionSetsDisplay.textContent = String(totals.sets);
+    }
+    if (finishDurationSummary) {
+        finishDurationSummary.textContent = formatDuration(duration);
+    }
+    if (finishVolumeSummary) {
+        finishVolumeSummary.textContent = `${totals.volume} kg`;
+    }
+    if (finishSetsSummary) {
+        finishSetsSummary.textContent = String(totals.sets);
+    }
 }
 
 function autoResizeTextarea(textarea) {
@@ -564,13 +699,18 @@ function renderWorkouts(workouts) {
         return;
     }
 
+    activeWorkoutsCache = Array.isArray(workouts) ? workouts : [];
+
     if (!workouts || workouts.length === 0) {
         closeWorkoutDetailModal();
         workoutList.innerHTML = '<p class="empty-state">No workouts found. Add your first one and start building your streak.</p>';
+        updateSessionSummary();
         return;
     }
 
     const workoutHtml = workouts.map(workout => {
+        const previousSets = Array.isArray(workout.previous_set_details) ? workout.previous_set_details : [];
+        const personalRecords = workout.personal_records || {};
         const setEntries = Array.isArray(workout.set_details) && workout.set_details.length > 0
             ? workout.set_details
             : [{ reps: '', kg: '', set_type: 'working', done: false }];
@@ -578,8 +718,9 @@ function renderWorkouts(workouts) {
         const setRows = setEntries.map((setEntry, index) => {
             const setType = setEntry.set_type || 'working';
             const setTypeMeta = getSetTypeMeta(setType);
-            const previousValue = setEntry.reps
-                ? `${setEntry.kg || 0} kg x ${setEntry.reps}`
+            const previousSet = previousSets[index] || previousSets[previousSets.length - 1] || null;
+            const previousValue = previousSet && previousSet.reps
+                ? `${previousSet.kg || 0} kg x ${previousSet.reps}`
                 : '-';
             const hasRepRange = Number(workout.routine_rep_min) > 0 && Number(workout.routine_rep_max) > 0;
             const repRangeText = hasRepRange
@@ -596,13 +737,16 @@ function renderWorkouts(workouts) {
                         <button type="button" class="set-type-trigger is-${setType}" data-id="${workout.id}">${setType === 'working' ? index + 1 : setTypeMeta.code}</button>
                     </div>
                     <div class="set-cell set-cell-previous">${escapeHtml(previousValue)}</div>
-                    <input
-                        type="number"
-                        class="kg-field"
-                        data-id="${workout.id}"
-                        placeholder="KG"
-                        min="0"
-                        value="${setEntry.kg || ''}">
+                    <label class="kg-entry-field">
+                        <input
+                            type="number"
+                            class="kg-field"
+                            data-id="${workout.id}"
+                            placeholder="KG"
+                            min="0"
+                            value="${setEntry.kg || ''}">
+                        <button type="button" class="plate-calc-btn" data-id="${workout.id}" title="Plate calculator">Calc</button>
+                    </label>
                     <label class="rep-entry-field">
                         ${hasRepRange ? `<span class="rep-range-hint">${escapeHtml(repRangeText)}</span>` : ''}
                         <input
@@ -632,7 +776,12 @@ function renderWorkouts(workouts) {
         const completedClass = workout.completed ? ' is-completed' : '';
 
         return `
-            <article class="workout-card workout-card-sheet${completedClass}">
+            <article
+                class="workout-card workout-card-sheet${completedClass}"
+                data-workout-id="${workout.id}"
+                data-best-weight="${personalRecords.best_weight || 0}"
+                data-best-reps="${personalRecords.best_reps || 0}"
+                data-best-volume="${personalRecords.best_volume || 0}">
                 <div class="current-workout-layout">
                     ${thumbnailHtml}
                     <div class="current-workout-main">
@@ -654,6 +803,7 @@ function renderWorkouts(workouts) {
                                 Show Details
                             </button>
                         ` : ''}
+                        <p class="previous-value-note">Previous values load from your last saved workout for this exercise.</p>
                     </div>
                 </div>
                 <div class="strength-editor" data-id="${workout.id}">
@@ -719,7 +869,15 @@ function renderWorkouts(workouts) {
             }
 
             const allDone = setDetails.length > 0 && setDetails.every(setItem => setItem.done);
+            maybeShowPersonalRecord(row);
+            updateSessionSummary();
             saveStrengthWorkout(workoutId, setDetails, allDone);
+        });
+    });
+
+    document.querySelectorAll('.plate-calc-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            openPlateCalculator(button.closest('.set-row'));
         });
     });
 
@@ -754,6 +912,144 @@ function renderWorkouts(workouts) {
     });
 
     document.querySelectorAll('.set-list').forEach(refreshSetRows);
+    updateSessionSummary();
+}
+
+function maybeShowPersonalRecord(row) {
+    if (!row || row.dataset.done !== 'true') {
+        return;
+    }
+
+    const card = row.closest('.workout-card');
+    const kg = Number(row.querySelector('.kg-field')?.value || 0);
+    const reps = Number(row.querySelector('.reps-field')?.value || 0);
+    const bestWeight = Number(card?.dataset.bestWeight || 0);
+    const bestReps = Number(card?.dataset.bestReps || 0);
+    const bestVolume = Number(card?.dataset.bestVolume || 0);
+    const setVolume = kg * reps;
+
+    if ((kg > bestWeight && kg > 0) || (reps > bestReps && reps > 0) || (setVolume > bestVolume && setVolume > 0)) {
+        showMessage('New personal record hit. Nice work.', 'success');
+    }
+}
+
+function openPlateCalculator(row) {
+    if (!plateCalculatorOverlay || !row) {
+        return;
+    }
+
+    activePlateRow = row;
+    const kgInput = row.querySelector('.kg-field');
+    if (plateTargetInput) {
+        plateTargetInput.value = kgInput ? kgInput.value : '';
+    }
+    calculatePlates();
+    plateCalculatorOverlay.style.display = 'flex';
+}
+
+function closePlateCalculator() {
+    if (plateCalculatorOverlay) {
+        plateCalculatorOverlay.style.display = 'none';
+    }
+    activePlateRow = null;
+}
+
+function calculatePlates() {
+    if (!plateCalculatorResult) {
+        return;
+    }
+
+    const target = Number(plateTargetInput?.value || 0);
+    const bar = Number(plateBarInput?.value || 20);
+    const plates = [25, 20, 15, 10, 5, 2.5, 1.25];
+
+    if (!target || target <= bar) {
+        plateCalculatorResult.textContent = 'Target must be heavier than the bar.';
+        return;
+    }
+
+    let perSide = (target - bar) / 2;
+    const result = [];
+    plates.forEach(plate => {
+        const count = Math.floor((perSide + 0.001) / plate);
+        if (count > 0) {
+            result.push(`${count} x ${plate}kg`);
+            perSide -= count * plate;
+        }
+    });
+
+    plateCalculatorResult.innerHTML = `
+        <strong>Each side:</strong>
+        <span>${result.length ? result.join(', ') : 'No plates needed'}</span>
+        ${perSide > 0.05 ? `<small>${perSide.toFixed(2)}kg short per side with these plates.</small>` : ''}
+    `;
+}
+
+function startSessionTimer() {
+    if (!sessionDurationDisplay) {
+        return;
+    }
+
+    const state = getSessionState();
+    if (pauseSessionButton) {
+        pauseSessionButton.textContent = state.pausedAt ? 'Resume Timer' : 'Pause Timer';
+    }
+    updateSessionSummary();
+    clearInterval(sessionTimerInterval);
+    sessionTimerInterval = setInterval(updateSessionSummary, 1000);
+}
+
+function toggleSessionPause() {
+    const state = getSessionState();
+
+    if (state.pausedAt) {
+        const extraPaused = Date.now() - state.pausedAt;
+        localStorage.setItem('gymtrance_session_paused_total', String(state.pausedTotal + extraPaused));
+        localStorage.removeItem('gymtrance_session_paused_at');
+        if (pauseSessionButton) {
+            pauseSessionButton.textContent = 'Pause Timer';
+        }
+    } else {
+        localStorage.setItem('gymtrance_session_paused_at', String(Date.now()));
+        if (pauseSessionButton) {
+            pauseSessionButton.textContent = 'Resume Timer';
+        }
+    }
+
+    updateSessionSummary();
+}
+
+function openFinishWorkoutModal() {
+    if (!finishWorkoutModalOverlay) {
+        finishWorkout();
+        return;
+    }
+
+    const firstRoutine = activeWorkoutsCache.find(workout => workout.routine_name)?.routine_name;
+    const firstWorkout = activeWorkoutsCache.length === 1 ? activeWorkoutsCache[0].workout : '';
+    const date = new Date();
+    const timezoneOffset = date.getTimezoneOffset() * 60000;
+
+    if (finishSessionNameInput) {
+        finishSessionNameInput.value = firstRoutine || firstWorkout || 'Workout';
+    }
+    if (finishSessionDateInput) {
+        finishSessionDateInput.value = new Date(Date.now() - timezoneOffset).toISOString().slice(0, 16);
+    }
+    if (finishSessionNoteInput) {
+        finishSessionNoteInput.value = '';
+    }
+    if (finishSessionPrivateInput) {
+        finishSessionPrivateInput.checked = false;
+    }
+    updateSessionSummary();
+    finishWorkoutModalOverlay.style.display = 'flex';
+}
+
+function closeFinishWorkoutModal() {
+    if (finishWorkoutModalOverlay) {
+        finishWorkoutModalOverlay.style.display = 'none';
+    }
 }
 
 function loadWorkouts() {
@@ -828,13 +1124,23 @@ function finishWorkout() {
     fetch('http://127.0.0.1:5000/finish-workout', {
         method: 'POST',
         headers: {
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
-        }
+        },
+        body: JSON.stringify({
+            session_name: finishSessionNameInput ? finishSessionNameInput.value : '',
+            completed_at: finishSessionDateInput ? finishSessionDateInput.value : '',
+            workout_note: finishSessionNoteInput ? finishSessionNoteInput.value : '',
+            is_private: finishSessionPrivateInput ? finishSessionPrivateInput.checked : false,
+            duration_seconds: getSessionDurationSeconds()
+        })
     })
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
             showMessage('Workout finished successfully!', 'success');
+            closeFinishWorkoutModal();
+            resetSessionTimer();
             openMuscleSplitModal(data.muscle_split || [], data.muscle_map || []);
             loadWorkouts();
         } else {
@@ -933,12 +1239,15 @@ function addSetRow(workoutId, setType = 'working') {
             <button type="button" class="set-type-trigger is-${setType}" data-id="${workoutId}">${setType === 'working' ? nextSetNumber : setTypeMeta.code}</button>
         </div>
         <div class="set-cell set-cell-previous">-</div>
-        <input
-            type="number"
-            class="kg-field"
-            data-id="${workoutId}"
-            placeholder="KG"
-            min="0">
+        <label class="kg-entry-field">
+            <input
+                type="number"
+                class="kg-field"
+                data-id="${workoutId}"
+                placeholder="KG"
+                min="0">
+            <button type="button" class="plate-calc-btn" data-id="${workoutId}" title="Plate calculator">Calc</button>
+        </label>
         <label class="rep-entry-field">
             <input
                 type="number"
@@ -975,7 +1284,13 @@ function addSetRow(workoutId, setType = 'working') {
         }
 
         const allDone = setDetails.length > 0 && setDetails.every(setItem => setItem.done);
+        maybeShowPersonalRecord(row);
+        updateSessionSummary();
         saveStrengthWorkout(workoutId, setDetails, allDone);
+    });
+
+    row.querySelector('.plate-calc-btn').addEventListener('click', function () {
+        openPlateCalculator(row);
     });
 
     refreshSetRows(setList);
@@ -1047,6 +1362,7 @@ function startEmptyWorkout() {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
+            resetSessionTimer();
             window.location.href = `/workouts/current?empty=${Date.now()}`;
         } else {
             showMessage(data.message || 'Failed to start empty workout.', 'error');
@@ -1716,6 +2032,7 @@ function startRoutine(routineId) {
     .then(response => response.json())
     .then(data => {
         if (data.status === 'success') {
+            resetSessionTimer();
             window.location.href = '/workouts/current';
         } else {
             showMessage(data.message || 'Failed to start routine.', 'error');
@@ -1782,11 +2099,19 @@ function renderWorkoutHistory(historyItems) {
                     <p class="section-label">Completed Workout</p>
                     <h3 class="workout-title">${escapeHtml(sessionName)}</h3>
                     <p class="history-date">${escapeHtml(completedAt)}</p>
+                    <p class="history-social-meta">0 likes &middot; 0 comments</p>
                 </div>
                 <div class="history-session-actions">
                     <button type="button" class="history-toggle-btn secondary-btn" data-history-id="${session.id}">View Details</button>
-                    <button type="button" class="history-edit-btn secondary-btn" data-history-id="${session.id}">Edit</button>
-                    <button type="button" class="history-delete-btn danger-btn" data-history-id="${session.id}">Delete</button>
+                    <div class="history-menu-wrap">
+                        <button type="button" class="history-menu-btn" data-history-id="${session.id}" aria-label="Workout options">&#8942;</button>
+                        <div class="history-menu" data-history-id="${session.id}" hidden>
+                            <button type="button" class="history-menu-action" data-action="routine" data-history-id="${session.id}" data-session-name="${escapeHtml(sessionName)}">Save as Routine</button>
+                            <button type="button" class="history-menu-action" data-action="copy" data-history-id="${session.id}">Copy Workout</button>
+                            <button type="button" class="history-menu-action" data-action="edit" data-history-id="${session.id}">Edit Workout</button>
+                            <button type="button" class="history-menu-action is-danger" data-action="delete" data-history-id="${session.id}">Delete Workout</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1880,29 +2205,23 @@ function renderWorkoutHistory(historyItems) {
         });
     });
 
-    historyList.querySelectorAll('.history-edit-btn').forEach(button => {
-        button.addEventListener('click', function () {
-            const card = button.closest('.history-session-card');
-            if (!card) {
-                return;
-            }
-
-            showHistoryDetails(card, true);
-            const isEditing = card.classList.toggle('is-editing');
-            button.textContent = isEditing ? 'Save' : 'Edit';
-            card.querySelectorAll('.history-kg-field, .history-reps-field').forEach(input => {
-                input.disabled = !isEditing;
-            });
-
-            if (!isEditing) {
-                saveHistorySession(button.dataset.historyId, card);
+    historyList.querySelectorAll('.history-menu-btn').forEach(button => {
+        button.addEventListener('click', function (event) {
+            event.stopPropagation();
+            const menu = historyList.querySelector(`.history-menu[data-history-id="${button.dataset.historyId}"]`);
+            if (menu) {
+                closeHistoryMenus(menu);
+                menu.hidden = !menu.hidden;
             }
         });
     });
 
-    historyList.querySelectorAll('.history-delete-btn').forEach(button => {
-        button.addEventListener('click', function () {
-            deleteHistorySession(button.dataset.historyId);
+    historyList.querySelectorAll('.history-menu-action').forEach(button => {
+        button.addEventListener('click', function (event) {
+            event.stopPropagation();
+            const card = button.closest('.history-session-card');
+            closeHistoryMenus();
+            handleHistoryMenuAction(button.dataset.action, button.dataset.historyId, card, button.dataset.sessionName);
         });
     });
 
@@ -1914,6 +2233,18 @@ function renderWorkoutHistory(historyItems) {
             card.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }
+}
+
+function closeHistoryMenus(exceptMenu = null) {
+    if (!historyList) {
+        return;
+    }
+
+    historyList.querySelectorAll('.history-menu').forEach(menu => {
+        if (menu !== exceptMenu) {
+            menu.hidden = true;
+        }
+    });
 }
 
 function showHistoryDetails(card, shouldShow) {
@@ -1942,6 +2273,46 @@ function toggleHistoryDetails(historyId) {
     showHistoryDetails(card, Boolean(details && details.hidden));
 }
 
+function toggleHistoryEdit(card, historyId) {
+    if (!card) {
+        return;
+    }
+
+    showHistoryDetails(card, true);
+    const isEditing = card.classList.toggle('is-editing');
+    card.querySelectorAll('.history-kg-field, .history-reps-field').forEach(input => {
+        input.disabled = !isEditing;
+    });
+    card.querySelectorAll('.history-menu-action[data-action="edit"]').forEach(button => {
+        button.textContent = isEditing ? 'Save Workout' : 'Edit Workout';
+    });
+
+    if (!isEditing) {
+        saveHistorySession(historyId, card);
+    }
+}
+
+function handleHistoryMenuAction(action, historyId, card, sessionName) {
+    if (action === 'routine') {
+        saveHistoryAsRoutine(historyId, sessionName);
+        return;
+    }
+
+    if (action === 'copy') {
+        copyHistoryWorkout(historyId);
+        return;
+    }
+
+    if (action === 'edit') {
+        toggleHistoryEdit(card, historyId);
+        return;
+    }
+
+    if (action === 'delete') {
+        deleteHistorySession(historyId);
+    }
+}
+
 function collectHistorySession(card) {
     return Array.from(card.querySelectorAll('.history-workout-item')).map(workoutEl => ({
         id: Number(workoutEl.dataset.workoutId),
@@ -1952,6 +2323,73 @@ function collectHistorySession(card) {
             done: true
         }))
     }));
+}
+
+function saveHistoryAsRoutine(historyId, sessionName) {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    const defaultName = `${sessionName || 'Workout'} Routine`;
+    const routineName = window.prompt('Routine name', defaultName);
+    if (routineName === null) {
+        return;
+    }
+
+    fetch(`http://127.0.0.1:5000/history-data/${historyId}/routine`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            name: routineName.trim() || defaultName
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage('Routine created from past workout.', 'success');
+        } else {
+            showMessage(data.message || 'Failed to create routine.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Create routine from history error:', error);
+        showMessage('Failed to create routine.', 'error');
+    });
+}
+
+function copyHistoryWorkout(historyId) {
+    const token = localStorage.getItem('access_token');
+
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch(`http://127.0.0.1:5000/history-data/${historyId}/copy`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            resetSessionTimer();
+            window.location.href = `/workouts/current?copy=${Date.now()}`;
+        } else {
+            showMessage(data.message || 'Failed to copy workout.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Copy history workout error:', error);
+        showMessage('Failed to copy workout.', 'error');
+    });
 }
 
 function saveHistorySession(historyId, card) {
@@ -2805,6 +3243,656 @@ function loadMeasurements() {
     });
 }
 
+function getCalendarDateKey(value) {
+    if (!value) {
+        return '';
+    }
+    return String(value).slice(0, 10);
+}
+
+function getCalendarSessionsByDate() {
+    return calendarHistory.reduce((grouped, session) => {
+        const dateKey = getCalendarDateKey(session.completed_at);
+        if (!dateKey) {
+            return grouped;
+        }
+        if (!grouped[dateKey]) {
+            grouped[dateKey] = [];
+        }
+        grouped[dateKey].push(session);
+        return grouped;
+    }, {});
+}
+
+function getWeekStartDate(date) {
+    const weekDate = new Date(date);
+    const day = weekDate.getDay();
+    const offset = (day - calendarWeekStart + 7) % 7;
+    weekDate.setDate(weekDate.getDate() - offset);
+    weekDate.setHours(0, 0, 0, 0);
+    return weekDate;
+}
+
+function calculateCalendarStats() {
+    const sessionsByDate = getCalendarSessionsByDate();
+    const workoutDates = Object.keys(sessionsByDate).sort();
+    const today = new Date();
+    const todayKey = today.toISOString().slice(0, 10);
+    const lastWorkoutDate = workoutDates.filter(date => date <= todayKey).pop();
+    const restDays = lastWorkoutDate
+        ? Math.floor((new Date(todayKey) - new Date(lastWorkoutDate)) / 86400000)
+        : 0;
+
+    const workoutWeeks = new Set(workoutDates.map(date => getWeekStartDate(new Date(date)).toISOString().slice(0, 10)));
+    let streak = 0;
+    const cursor = getWeekStartDate(today);
+    while (workoutWeeks.has(cursor.toISOString().slice(0, 10))) {
+        streak += 1;
+        cursor.setDate(cursor.getDate() - 7);
+    }
+
+    if (calendarActiveStreak) {
+        calendarActiveStreak.textContent = `${streak} week${streak === 1 ? '' : 's'}`;
+    }
+    if (calendarRestDays) {
+        calendarRestDays.textContent = String(restDays);
+    }
+}
+
+function setCalendarTitle() {
+    if (!calendarTitle) {
+        return;
+    }
+
+    if (calendarView === 'month') {
+        calendarTitle.textContent = calendarDate.toLocaleDateString([], { month: 'long', year: 'numeric' });
+    } else if (calendarView === 'year') {
+        calendarTitle.textContent = String(calendarDate.getFullYear());
+    } else {
+        const years = [...new Set(calendarHistory.map(session => getCalendarDateKey(session.completed_at).slice(0, 4)).filter(Boolean))];
+        calendarTitle.textContent = years.length ? `${Math.min(...years)} - ${Math.max(...years)}` : 'All Time';
+    }
+}
+
+function getCalendarMonthCells(year, month) {
+    const firstDay = new Date(year, month, 1);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const offset = (firstDay.getDay() - calendarWeekStart + 7) % 7;
+    const cells = [];
+    for (let i = 0; i < offset; i += 1) {
+        cells.push(null);
+    }
+    for (let day = 1; day <= daysInMonth; day += 1) {
+        cells.push(new Date(year, month, day));
+    }
+    while (cells.length % 7 !== 0) {
+        cells.push(null);
+    }
+    return cells;
+}
+
+function renderCalendarMonth() {
+    const sessionsByDate = getCalendarSessionsByDate();
+    const year = calendarDate.getFullYear();
+    const month = calendarDate.getMonth();
+    const weekdays = calendarWeekStart === 1
+        ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const cells = getCalendarMonthCells(year, month);
+
+    calendarGrid.className = 'calendar-grid calendar-month-grid';
+    calendarGrid.innerHTML = `
+        ${weekdays.map(day => `<span class="calendar-weekday">${day}</span>`).join('')}
+        ${cells.map(date => {
+            if (!date) {
+                return '<span class="calendar-day is-empty"></span>';
+            }
+            const dateKey = date.toISOString().slice(0, 10);
+            const sessions = sessionsByDate[dateKey] || [];
+            return `
+                <button type="button" class="calendar-day${sessions.length ? ' has-workout' : ''}${dateKey === selectedCalendarDate ? ' is-selected' : ''}" data-date="${dateKey}">
+                    <span>${date.getDate()}</span>
+                    ${sessions.length ? `<small>${sessions.length}</small>` : ''}
+                </button>
+            `;
+        }).join('')}
+    `;
+}
+
+function renderCalendarYear() {
+    const sessionsByDate = getCalendarSessionsByDate();
+    const year = calendarDate.getFullYear();
+    calendarGrid.className = 'calendar-grid calendar-year-grid';
+    calendarGrid.innerHTML = Array.from({ length: 12 }, (_, month) => {
+        const cells = getCalendarMonthCells(year, month);
+        return `
+            <article class="calendar-mini-month">
+                <h3>${new Date(year, month, 1).toLocaleDateString([], { month: 'short' })}</h3>
+                <div>
+                    ${cells.map(date => {
+                        if (!date) {
+                            return '<span></span>';
+                        }
+                        const dateKey = date.toISOString().slice(0, 10);
+                        return `<button type="button" class="${sessionsByDate[dateKey] ? 'has-workout' : ''}" data-date="${dateKey}">${date.getDate()}</button>`;
+                    }).join('')}
+                </div>
+            </article>
+        `;
+    }).join('');
+}
+
+function renderCalendarAllTime() {
+    const sessionsByDate = getCalendarSessionsByDate();
+    const years = [...new Set(Object.keys(sessionsByDate).map(date => Number(date.slice(0, 4))))].sort((a, b) => a - b);
+    calendarGrid.className = 'calendar-grid calendar-all-grid';
+    calendarGrid.innerHTML = years.length ? years.map(year => {
+        const count = Object.keys(sessionsByDate).filter(date => Number(date.slice(0, 4)) === year).length;
+        return `
+            <button type="button" class="calendar-year-card" data-year="${year}">
+                <span>${year}</span>
+                <strong>${count}</strong>
+                <small>workout day${count === 1 ? '' : 's'}</small>
+            </button>
+        `;
+    }).join('') : '<p class="empty-state">No workouts logged yet.</p>';
+}
+
+function renderCalendarDayDetail() {
+    if (!calendarDayDetail) {
+        return;
+    }
+    const sessions = getCalendarSessionsByDate()[selectedCalendarDate] || [];
+    calendarDayDetail.innerHTML = `
+        <div class="calendar-detail-header">
+            <div>
+                <p class="section-label">Selected Date</p>
+                <h3>${escapeHtml(selectedCalendarDate)}</h3>
+            </div>
+            <button type="button" class="secondary-btn calendar-log-selected-btn" data-date="${selectedCalendarDate}">+ Log Workout</button>
+        </div>
+        <div class="calendar-session-list">
+            ${sessions.length ? sessions.map(session => `
+                <button type="button" class="calendar-session-card" data-history-id="${session.id}">
+                    <strong>${escapeHtml(formatTitleCase(session.session_name || 'Workout'))}</strong>
+                    <span>${escapeHtml(formatHistoryDate(session.completed_at))}</span>
+                    <small>${Array.isArray(session.completed_workout) ? session.completed_workout.length : 0} exercises</small>
+                </button>
+            `).join('') : '<p class="empty-state">No workout on this date yet.</p>'}
+        </div>
+    `;
+
+    calendarDayDetail.querySelectorAll('.calendar-session-card').forEach(button => {
+        button.addEventListener('click', function () {
+            openHistorySession(button.dataset.historyId);
+        });
+    });
+    calendarDayDetail.querySelector('.calendar-log-selected-btn')?.addEventListener('click', function () {
+        openCalendarLogModal(selectedCalendarDate);
+    });
+}
+
+function bindCalendarButtons() {
+    calendarGrid.querySelectorAll('[data-date]').forEach(button => {
+        button.addEventListener('click', function () {
+            selectedCalendarDate = button.dataset.date;
+            renderCalendar();
+        });
+    });
+    calendarGrid.querySelectorAll('[data-year]').forEach(button => {
+        button.addEventListener('click', function () {
+            calendarDate = new Date(Number(button.dataset.year), 0, 1);
+            calendarView = 'year';
+            calendarViewButtons.forEach(item => item.classList.toggle('is-active', item.dataset.view === 'year'));
+            renderCalendar();
+        });
+    });
+}
+
+function renderCalendar() {
+    if (!calendarGrid) {
+        return;
+    }
+    calculateCalendarStats();
+    setCalendarTitle();
+    if (calendarView === 'month') {
+        renderCalendarMonth();
+    } else if (calendarView === 'year') {
+        renderCalendarYear();
+    } else {
+        renderCalendarAllTime();
+    }
+    bindCalendarButtons();
+    renderCalendarDayDetail();
+}
+
+function openCalendarLogModal(dateValue = selectedCalendarDate) {
+    if (!calendarLogModalOverlay) {
+        return;
+    }
+    if (calendarLogDateInput) {
+        calendarLogDateInput.value = dateValue || new Date().toISOString().slice(0, 10);
+    }
+    if (calendarLogNameInput) {
+        calendarLogNameInput.value = '';
+    }
+    calendarLogModalOverlay.style.display = 'flex';
+}
+
+function closeCalendarLogModal() {
+    if (calendarLogModalOverlay) {
+        calendarLogModalOverlay.style.display = 'none';
+    }
+}
+
+function logCalendarWorkout(event) {
+    event.preventDefault();
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch('http://127.0.0.1:5000/calendar-log-workout', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            date: calendarLogDateInput ? calendarLogDateInput.value : selectedCalendarDate,
+            session_name: calendarLogNameInput ? calendarLogNameInput.value : ''
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            closeCalendarLogModal();
+            selectedCalendarDate = getCalendarDateKey(data.data.completed_at);
+            loadCalendar();
+            showMessage('Workout day logged.', 'success');
+        } else {
+            showMessage(data.message || 'Failed to log workout day.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Calendar log error:', error);
+        showMessage('Failed to log workout day.', 'error');
+    });
+}
+
+function shareCalendar() {
+    const workoutDays = Object.keys(getCalendarSessionsByDate()).length;
+    const text = `GymTrance Calendar\n${workoutDays} workout days\n${calendarActiveStreak ? calendarActiveStreak.textContent : '0 weeks'} active streak`;
+    if (navigator.share) {
+        navigator.share({ title: 'GymTrance Calendar', text }).catch(() => {});
+        return;
+    }
+    navigator.clipboard.writeText(text)
+        .then(() => showMessage('Calendar summary copied.', 'success'))
+        .catch(() => showMessage('Could not copy calendar summary.', 'error'));
+}
+
+function loadCalendar() {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch('http://127.0.0.1:5000/history-data', {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            calendarHistory = Array.isArray(data.data) ? data.data : [];
+            renderCalendar();
+        } else {
+            showMessage(data.message || 'Failed to load calendar.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Load calendar error:', error);
+        showMessage('Failed to load calendar.', 'error');
+    });
+}
+
+function renderSocialData(data) {
+    const viewer = data.viewer || {};
+    if (socialBioInput) {
+        socialBioInput.value = viewer.bio || '';
+    }
+    if (socialPrivateInput) {
+        socialPrivateInput.checked = Boolean(viewer.private);
+    }
+    if (socialHideSuggestionsInput) {
+        socialHideSuggestionsInput.checked = Boolean(viewer.hide_suggestions);
+    }
+
+    if (socialSuggestedList) {
+        const suggested = Array.isArray(data.suggested) ? data.suggested : [];
+        socialSuggestedList.innerHTML = suggested.length ? suggested.map(user => `
+            <article class="social-athlete-card">
+                <button type="button" class="social-profile-link" data-username="${escapeHtml(user.username)}">
+                    <strong>${escapeHtml(user.username)}</strong>
+                    <span>${user.workouts || 0} workouts | ${user.followers || 0} followers</span>
+                </button>
+                <button type="button" class="secondary-btn social-follow-btn" data-username="${escapeHtml(user.username)}" data-following="${user.following ? 'true' : 'false'}">
+                    ${user.following ? 'Unfollow' : 'Follow'}
+                </button>
+            </article>
+        `).join('') : '<p class="empty-state">No suggested athletes yet. Create another user to test the local social feed.</p>';
+    }
+
+    if (socialFeedList) {
+        const feed = Array.isArray(data.feed) ? data.feed : [];
+        socialFeedList.innerHTML = feed.length ? feed.map(session => renderSocialWorkoutCard(session)).join('') : '<p class="empty-state">No public workouts in this feed yet.</p>';
+    }
+
+    bindSocialButtons();
+}
+
+function renderSocialWorkoutCard(session) {
+    const exercises = Array.isArray(session.completed_workout) ? session.completed_workout : [];
+    const muscleText = Array.isArray(session.muscle_split) && session.muscle_split.length
+        ? session.muscle_split.slice(0, 4).map(item => `${formatTitleCase(item.muscle)} ${item.percent}%`).join(' | ')
+        : 'No muscle split yet';
+    const comments = Array.isArray(session.comments) ? session.comments : [];
+
+    return `
+        <article class="social-workout-card" data-session-id="${session.id}">
+            <div class="social-workout-header">
+                <button type="button" class="social-profile-link social-owner-btn" data-username="${escapeHtml(session.owner)}">${escapeHtml(session.owner)}</button>
+                <span>${escapeHtml(formatHistoryDate(session.completed_at))}</span>
+            </div>
+            <h3>${escapeHtml(formatTitleCase(session.session_name || 'Workout'))}</h3>
+            ${session.workout_note ? `<p>${escapeHtml(session.workout_note)}</p>` : ''}
+            <div class="social-stats-row">
+                <span>${formatDuration(session.duration_seconds || 0)}</span>
+                <span>${session.completed_sets || 0} sets</span>
+                <span>${session.volume_load || 0} kg</span>
+            </div>
+            <p class="social-muscle-line">${escapeHtml(muscleText)}</p>
+            <details class="social-workout-details">
+                <summary>View Workout Details</summary>
+                <div class="social-exercise-list">
+                    ${exercises.map(workout => `
+                        <div>
+                            <strong>${escapeHtml(formatTitleCase(workout.workout || 'Exercise'))}</strong>
+                            <span>${(workout.set_details || []).filter(item => item.done).map(item => `${item.kg || 0}kg x ${item.reps || 0}`).join(', ') || 'No completed sets'}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </details>
+            <div class="social-card-actions">
+                <button type="button" class="secondary-btn social-like-btn" data-session-id="${session.id}">${session.viewer_liked ? 'Liked' : 'Like'} (${session.like_count || 0})</button>
+                <button type="button" class="secondary-btn social-save-routine-btn" data-session-id="${session.id}">Save as Routine</button>
+                <button type="button" class="secondary-btn social-copy-workout-btn" data-session-id="${session.id}">Copy Workout</button>
+                <button type="button" class="secondary-btn social-share-btn" data-session-name="${escapeHtml(session.session_name || 'Workout')}" data-owner="${escapeHtml(session.owner)}">Share</button>
+            </div>
+            <div class="social-comments">
+                ${comments.map(comment => `<p><strong>${escapeHtml(comment.owner)}:</strong> ${linkifyComment(comment.text)}</p>`).join('')}
+                <form class="social-comment-form" data-session-id="${session.id}">
+                    <input type="text" name="comment" placeholder="Write a comment or paste a link">
+                    <button type="submit">Post</button>
+                </form>
+            </div>
+        </article>
+    `;
+}
+
+function linkifyComment(text) {
+    const safeText = escapeHtml(text || '');
+    return safeText.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+
+function bindSocialButtons() {
+    document.querySelectorAll('.social-profile-link').forEach(button => {
+        button.addEventListener('click', function () {
+            openSocialProfile(button.dataset.username);
+        });
+    });
+
+    document.querySelectorAll('.social-follow-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            toggleSocialFollow(button.dataset.username, button.dataset.following === 'true');
+        });
+    });
+
+    document.querySelectorAll('.social-like-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            likeSocialWorkout(button.dataset.sessionId);
+        });
+    });
+
+    document.querySelectorAll('.social-save-routine-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            saveSocialWorkoutAsRoutine(button.dataset.sessionId);
+        });
+    });
+
+    document.querySelectorAll('.social-copy-workout-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            copySocialWorkout(button.dataset.sessionId);
+        });
+    });
+
+    document.querySelectorAll('.social-share-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            const text = `${button.dataset.owner}'s ${button.dataset.sessionName} on GymTrance`;
+            if (navigator.share) {
+                navigator.share({ title: 'GymTrance Workout', text }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(text).then(() => showMessage('Share text copied.', 'success'));
+            }
+        });
+    });
+
+    document.querySelectorAll('.social-comment-form').forEach(form => {
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            postSocialComment(form.dataset.sessionId, form.querySelector('[name="comment"]').value);
+        });
+    });
+}
+
+function loadSocialData() {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        showMessage('Please log in first.', 'error');
+        return;
+    }
+
+    fetch(`http://127.0.0.1:5000/social-data?feed=${encodeURIComponent(activeSocialFeed)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            renderSocialData(data.data || {});
+        } else {
+            showMessage(data.message || 'Failed to load social feed.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Load social error:', error);
+        showMessage('Failed to load social feed.', 'error');
+    });
+}
+
+function saveSocialProfile(event) {
+    event.preventDefault();
+    const token = localStorage.getItem('access_token');
+    fetch('http://127.0.0.1:5000/social/profile', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            bio: socialBioInput ? socialBioInput.value : '',
+            private: socialPrivateInput ? socialPrivateInput.checked : false,
+            hide_suggestions: socialHideSuggestionsInput ? socialHideSuggestionsInput.checked : false
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showMessage('Social profile updated.', 'success');
+            loadSocialData();
+        } else {
+            showMessage(data.message || 'Failed to update profile.', 'error');
+        }
+    });
+}
+
+function toggleSocialFollow(username, isFollowing) {
+    const token = localStorage.getItem('access_token');
+    fetch(`http://127.0.0.1:5000/social/follow/${encodeURIComponent(username)}`, {
+        method: isFollowing ? 'DELETE' : 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            loadSocialData();
+        } else {
+            showMessage(data.message || 'Could not update follow.', 'error');
+        }
+    });
+}
+
+function likeSocialWorkout(sessionId) {
+    const token = localStorage.getItem('access_token');
+    fetch(`http://127.0.0.1:5000/social/workouts/${sessionId}/like`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+    }).then(() => loadSocialData());
+}
+
+function postSocialComment(sessionId, text) {
+    const token = localStorage.getItem('access_token');
+    fetch(`http://127.0.0.1:5000/social/workouts/${sessionId}/comments`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ text })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            loadSocialData();
+        } else {
+            showMessage(data.message || 'Could not post comment.', 'error');
+        }
+    });
+}
+
+function saveSocialWorkoutAsRoutine(sessionId) {
+    const token = localStorage.getItem('access_token');
+    fetch(`http://127.0.0.1:5000/social/workouts/${sessionId}/routine`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(response => response.json())
+    .then(data => {
+        showMessage(data.status === 'success' ? 'Routine saved from athlete workout.' : (data.message || 'Could not save routine.'), data.status === 'success' ? 'success' : 'error');
+    });
+}
+
+function copySocialWorkout(sessionId) {
+    const token = localStorage.getItem('access_token');
+    fetch(`http://127.0.0.1:5000/social/workouts/${sessionId}/copy`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            resetSessionTimer();
+            window.location.href = `/workouts/current?socialCopy=${Date.now()}`;
+        } else {
+            showMessage(data.message || 'Could not copy workout.', 'error');
+        }
+    });
+}
+
+function openSocialProfile(username) {
+    const token = localStorage.getItem('access_token');
+    fetch(`http://127.0.0.1:5000/social/profile/${encodeURIComponent(username)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status !== 'success') {
+            showMessage(data.message || 'Could not open profile.', 'error');
+            return;
+        }
+        renderSocialProfile(data.data);
+    });
+}
+
+function renderSocialProfile(data) {
+    if (!socialProfileModalOverlay || !socialProfileBody || !socialProfileTitle) {
+        return;
+    }
+    const profile = data.profile || {};
+    const stats = data.stats || {};
+    const viewer = data.viewer_stats || {};
+    socialProfileTitle.textContent = profile.username || 'Profile';
+    socialProfileBody.innerHTML = `
+        <div class="social-profile-hero">
+            <p>${escapeHtml(profile.bio || '')}</p>
+            <button type="button" class="secondary-btn social-follow-btn" data-username="${escapeHtml(profile.username)}" data-following="${profile.following ? 'true' : 'false'}">${profile.following ? 'Unfollow' : 'Follow'}</button>
+        </div>
+        <div class="social-profile-stats">
+            <article><span>Workouts</span><strong>${stats.workouts || 0}</strong></article>
+            <article><span>Followers</span><strong>${profile.followers || 0}</strong></article>
+            <article><span>Following</span><strong>${profile.following_count || 0}</strong></article>
+            <article><span>Volume</span><strong>${stats.volume || 0} kg</strong></article>
+        </div>
+        <div class="social-compare-grid">
+            <article><h4>${escapeHtml(profile.username)} Stats</h4><p>${stats.sets || 0} sets | ${formatDuration(stats.duration_seconds || 0)}</p></article>
+            <article><h4>Your Stats</h4><p>${viewer.sets || 0} sets | ${formatDuration(viewer.duration_seconds || 0)}</p></article>
+        </div>
+        <p class="social-muscle-line">Exercises in common: ${(data.common_exercises || []).map(formatTitleCase).join(', ') || 'None yet'}</p>
+        <div class="social-feed-list">${(data.recent_workouts || []).map(renderSocialWorkoutCard).join('') || '<p class="empty-state">No recent public workouts.</p>'}</div>
+    `;
+    socialProfileModalOverlay.style.display = 'flex';
+    bindSocialButtons();
+}
+
+function closeSocialProfileModal() {
+    if (socialProfileModalOverlay) {
+        socialProfileModalOverlay.style.display = 'none';
+    }
+}
+
+function loadSocialLeaderboards() {
+    const token = localStorage.getItem('access_token');
+    if (!socialLeaderboardList || !token) {
+        return;
+    }
+    fetch('http://127.0.0.1:5000/social/leaderboards', {
+        headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const rows = data.status === 'success' && Array.isArray(data.data) ? data.data : [];
+        socialLeaderboardList.innerHTML = rows.length ? rows.slice(0, 8).map(row => `
+            <article>
+                <strong>${escapeHtml(formatTitleCase(row.exercise))}</strong>
+                ${(row.leaders || []).map((leader, index) => `<span>${index + 1}. ${escapeHtml(leader.username)} ${leader.kg}kg x ${leader.reps}</span>`).join('')}
+            </article>
+        `).join('') : '<p class="empty-state">Follow users to build friend leaderboards.</p>';
+    });
+}
+
 function loadWorkoutHistory() {
     const token = localStorage.getItem('access_token');
 
@@ -2900,9 +3988,50 @@ if (loadDataButton) {
 
 if (finishWorkoutButton) {
     finishWorkoutButton.addEventListener('click', function () {
+        openFinishWorkoutModal();
+    });
+}
+
+if (finishWorkoutForm) {
+    finishWorkoutForm.addEventListener('submit', function (event) {
+        event.preventDefault();
         finishWorkout();
     });
 }
+
+if (closeFinishWorkoutModalButton) {
+    closeFinishWorkoutModalButton.addEventListener('click', closeFinishWorkoutModal);
+}
+
+if (finishWorkoutModalOverlay) {
+    finishWorkoutModalOverlay.addEventListener('click', function (event) {
+        if (event.target === finishWorkoutModalOverlay) {
+            closeFinishWorkoutModal();
+        }
+    });
+}
+
+if (pauseSessionButton) {
+    pauseSessionButton.addEventListener('click', toggleSessionPause);
+}
+
+if (closePlateCalculatorButton) {
+    closePlateCalculatorButton.addEventListener('click', closePlateCalculator);
+}
+
+if (plateCalculatorOverlay) {
+    plateCalculatorOverlay.addEventListener('click', function (event) {
+        if (event.target === plateCalculatorOverlay) {
+            closePlateCalculator();
+        }
+    });
+}
+
+[plateTargetInput, plateBarInput].forEach(input => {
+    if (input) {
+        input.addEventListener('input', calculatePlates);
+    }
+});
 
 document.querySelectorAll('.back-page-btn').forEach(button => {
     button.addEventListener('click', function () {
@@ -3344,12 +4473,112 @@ if (progressPhotoCompareSelect) {
     progressPhotoCompareSelect.addEventListener('change', renderProgressPhotoCompare);
 }
 
+if (calendarPrevButton) {
+    calendarPrevButton.addEventListener('click', function () {
+        if (calendarView === 'month') {
+            calendarDate.setMonth(calendarDate.getMonth() - 1);
+        } else {
+            calendarDate.setFullYear(calendarDate.getFullYear() - 1);
+        }
+        renderCalendar();
+    });
+}
+
+if (calendarNextButton) {
+    calendarNextButton.addEventListener('click', function () {
+        if (calendarView === 'month') {
+            calendarDate.setMonth(calendarDate.getMonth() + 1);
+        } else {
+            calendarDate.setFullYear(calendarDate.getFullYear() + 1);
+        }
+        renderCalendar();
+    });
+}
+
+if (calendarTodayButton) {
+    calendarTodayButton.addEventListener('click', function () {
+        calendarDate = new Date();
+        selectedCalendarDate = calendarDate.toISOString().slice(0, 10);
+        calendarView = 'month';
+        calendarViewButtons.forEach(button => button.classList.toggle('is-active', button.dataset.view === 'month'));
+        renderCalendar();
+    });
+}
+
+calendarViewButtons.forEach(button => {
+    button.addEventListener('click', function () {
+        calendarView = button.dataset.view || 'month';
+        calendarViewButtons.forEach(item => item.classList.toggle('is-active', item === button));
+        renderCalendar();
+    });
+});
+
+if (calendarWeekStartSelect) {
+    calendarWeekStartSelect.value = String(calendarWeekStart);
+    calendarWeekStartSelect.addEventListener('change', function () {
+        calendarWeekStart = Number(calendarWeekStartSelect.value);
+        localStorage.setItem('calendar_week_start', String(calendarWeekStart));
+        renderCalendar();
+    });
+}
+
+if (calendarShareButton) {
+    calendarShareButton.addEventListener('click', shareCalendar);
+}
+
+if (openCalendarLogButton) {
+    openCalendarLogButton.addEventListener('click', function () {
+        openCalendarLogModal();
+    });
+}
+
+if (closeCalendarLogModalButton) {
+    closeCalendarLogModalButton.addEventListener('click', closeCalendarLogModal);
+}
+
+if (calendarLogModalOverlay) {
+    calendarLogModalOverlay.addEventListener('click', function (event) {
+        if (event.target === calendarLogModalOverlay) {
+            closeCalendarLogModal();
+        }
+    });
+}
+
+if (calendarLogForm) {
+    calendarLogForm.addEventListener('submit', logCalendarWorkout);
+}
+
+socialFeedTabs.forEach(button => {
+    button.addEventListener('click', function () {
+        activeSocialFeed = button.dataset.feed || 'discover';
+        socialFeedTabs.forEach(tab => tab.classList.toggle('is-active', tab === button));
+        loadSocialData();
+    });
+});
+
+if (socialProfileForm) {
+    socialProfileForm.addEventListener('submit', saveSocialProfile);
+}
+
+if (closeSocialProfileModalButton) {
+    closeSocialProfileModalButton.addEventListener('click', closeSocialProfileModal);
+}
+
+if (socialProfileModalOverlay) {
+    socialProfileModalOverlay.addEventListener('click', function (event) {
+        if (event.target === socialProfileModalOverlay) {
+            closeSocialProfileModal();
+        }
+    });
+}
+
 updateWorkoutButtons();
 
 if (window.location.pathname === '/workouts/current') {
     if (!savedToken) {
         window.location.href = '/';
     } else {
+        startSessionTimer();
         loadWorkouts();
     }
 }
@@ -3391,6 +4620,23 @@ if (window.location.pathname === '/workouts/measures') {
         window.location.href = '/';
     } else {
         loadMeasurements();
+    }
+}
+
+if (window.location.pathname === '/workouts/calendar') {
+    if (!savedToken) {
+        window.location.href = '/';
+    } else {
+        loadCalendar();
+    }
+}
+
+if (window.location.pathname === '/workouts/social') {
+    if (!savedToken) {
+        window.location.href = '/';
+    } else {
+        loadSocialData();
+        loadSocialLeaderboards();
     }
 }
 

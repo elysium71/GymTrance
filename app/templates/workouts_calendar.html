@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Workout Calendar - GymTrance</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    </head>
+    <body>
+        <div class="page-shell">
+            <button type="button" class="back-page-btn" data-back-url="/workouts">Back</button>
+
+            <header class="hero">
+                <div class="hero-copy">
+                    <p class="eyebrow">Consistency</p>
+                    <h1>Gym Calendar</h1>
+                    <p class="hero-text">
+                        See your complete workout history, active weekly streak, and blue workout days.
+                    </p>
+                </div>
+
+                <div class="hero-side">
+                    <button type="button" id="logout-btn" class="ghost-btn hero-logout">Logout</button>
+                </div>
+            </header>
+
+            <main class="dashboard">
+                <section class="panel content-panel calendar-panel">
+                    <div id="message-box" class="message-box"></div>
+
+                    <div class="calendar-topbar">
+                        <div class="calendar-stats">
+                            <article>
+                                <span>Active Streak</span>
+                                <strong id="calendar-active-streak">0 weeks</strong>
+                            </article>
+                            <article>
+                                <span>Rest Days</span>
+                                <strong id="calendar-rest-days">0</strong>
+                            </article>
+                        </div>
+                        <div class="calendar-actions">
+                            <button type="button" id="calendar-prev-btn" class="secondary-btn">Prev</button>
+                            <button type="button" id="calendar-today-btn" class="secondary-btn">Today</button>
+                            <button type="button" id="calendar-next-btn" class="secondary-btn">Next</button>
+                            <button type="button" id="share-calendar-btn" class="secondary-btn">Share</button>
+                            <button type="button" id="open-calendar-log-btn" class="secondary-btn">+ Log Workout</button>
+                        </div>
+                    </div>
+
+                    <div class="calendar-controls">
+                        <div class="calendar-view-tabs">
+                            <button type="button" class="calendar-view-btn is-active" data-view="month">Month</button>
+                            <button type="button" class="calendar-view-btn" data-view="year">Year</button>
+                            <button type="button" class="calendar-view-btn" data-view="all">All Time</button>
+                        </div>
+                        <label>
+                            <span>Week Starts</span>
+                            <select id="calendar-week-start-select">
+                                <option value="0">Sunday</option>
+                                <option value="1">Monday</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="calendar-heading-row">
+                        <h2 id="calendar-title">Calendar</h2>
+                    </div>
+
+                    <div id="calendar-grid" class="calendar-grid"></div>
+                    <div id="calendar-day-detail" class="calendar-day-detail"></div>
+                </section>
+            </main>
+        </div>
+
+        <div id="calendar-log-modal-overlay" class="preset-modal-overlay" style="display: none;">
+            <div class="preset-modal calendar-log-modal">
+                <div class="preset-modal-header">
+                    <div>
+                        <p class="section-label">Log Past Workout</p>
+                        <h3>Add Workout Day</h3>
+                    </div>
+                    <button type="button" id="close-calendar-log-modal-btn" class="ghost-btn modal-close-btn">Close</button>
+                </div>
+
+                <form id="calendar-log-form" class="measurement-form">
+                    <label class="routine-field">
+                        <span>Date</span>
+                        <input type="date" id="calendar-log-date-input" required>
+                    </label>
+                    <label class="routine-field">
+                        <span>Workout Name</span>
+                        <input type="text" id="calendar-log-name-input" placeholder="Example: Push Day">
+                    </label>
+                    <div class="preset-modal-actions">
+                        <button type="submit">Save Workout Day</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    </body>
+</html>

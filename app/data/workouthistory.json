@@ -3087,5 +3087,14 @@
         ],
         "muscle_split": [],
         "muscle_map": []
+    },
+    {
+        "id": 10008,
+        "owner": "admin",
+        "session_name": "Push Day",
+        "completed_at": "2026-04-29 12:00",
+        "completed_workout": [],
+        "muscle_split": [],
+        "muscle_map": []
     }
 ]

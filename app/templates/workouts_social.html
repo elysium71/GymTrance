@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Social - GymTrance</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    </head>
+    <body>
+        <div class="page-shell">
+            <button type="button" class="back-page-btn" data-back-url="/workouts">Back</button>
+
+            <header class="hero">
+                <div class="hero-copy">
+                    <p class="eyebrow">Community</p>
+                    <h1>Social Feed</h1>
+                    <p class="hero-text">
+                        Follow athletes, discover public workouts, compare stats, and import sessions you like.
+                    </p>
+                </div>
+
+                <div class="hero-side">
+                    <button type="button" id="logout-btn" class="ghost-btn hero-logout">Logout</button>
+                </div>
+            </header>
+
+            <main class="dashboard social-dashboard">
+                <section class="panel content-panel social-panel">
+                    <div id="message-box" class="message-box"></div>
+
+                    <div class="section-header workout-header">
+                        <div>
+                            <p class="section-label">Home</p>
+                            <h2>Workout Feed</h2>
+                        </div>
+                        <div class="social-tabs">
+                            <button type="button" class="social-feed-tab is-active" data-feed="discover">Discover</button>
+                            <button type="button" class="social-feed-tab" data-feed="following">Following</button>
+                        </div>
+                    </div>
+
+                    <div id="social-suggested-list" class="social-suggested-list"></div>
+                    <div id="social-feed-list" class="social-feed-list"></div>
+                </section>
+
+                <aside class="panel add-panel social-side-panel">
+                    <div class="panel-heading">
+                        <p class="section-label">Profile</p>
+                        <h2>Privacy & Social</h2>
+                    </div>
+
+                    <form id="social-profile-form" class="stack-form">
+                        <textarea id="social-bio-input" placeholder="Write a short bio"></textarea>
+                        <label class="finish-private-toggle">
+                            <input type="checkbox" id="social-private-input">
+                            <span>Private profile</span>
+                        </label>
+                        <label class="finish-private-toggle">
+                            <input type="checkbox" id="social-hide-suggestions-input">
+                            <span>Hide suggested users</span>
+                        </label>
+                        <button type="submit">Save Profile</button>
+                    </form>
+
+                    <div class="mini-box">
+                        <h3>Friend Leaderboards</h3>
+                        <div id="social-leaderboard-list" class="social-leaderboard-list"></div>
+                    </div>
+                </aside>
+            </main>
+        </div>
+
+        <div id="social-profile-modal-overlay" class="preset-modal-overlay" style="display: none;">
+            <div class="preset-modal social-profile-modal">
+                <div class="preset-modal-header">
+                    <div>
+                        <p class="section-label">Athlete Profile</p>
+                        <h3 id="social-profile-title">Profile</h3>
+                    </div>
+                    <button type="button" id="close-social-profile-modal-btn" class="ghost-btn modal-close-btn">Close</button>
+                </div>
+                <div id="social-profile-body" class="social-profile-body"></div>
+            </div>
+        </div>
+
+        <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    </body>
+</html>

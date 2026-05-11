@@ -26,6 +26,7 @@ WORKOUT_HISTORY_FILE = DATA_DIR / "workouthistory.json"
 ROUTINE_FILE = DATA_DIR / "routines.json"
 ROUTINE_FOLDER_FILE = DATA_DIR / "routinefolders.json"
 MEASUREMENT_FILE = DATA_DIR / "measurements.json"
+SOCIAL_FILE = DATA_DIR / "social.json"
 THUMBNAIL_DIR = DATA_DIR / "thumbnails"
 GIF_DIR = DATA_DIR / "gif"
 MEASUREMENT_PHOTO_DIR = DATA_DIR / "measurement_photos"
@@ -57,6 +58,10 @@ if not ROUTINE_FOLDER_FILE.exists():
 if not MEASUREMENT_FILE.exists():
     with open(MEASUREMENT_FILE, "w", encoding="utf-8") as f:
         f.write("[]")
+
+if not SOCIAL_FILE.exists():
+    with open(SOCIAL_FILE, "w", encoding="utf-8") as f:
+        json.dump({"profiles": {}, "follows": [], "likes": {}, "comments": {}}, f)
 
 
 # Initialize Flask app and JWT
@@ -227,6 +232,16 @@ def workout_measures_page():
     return render_template("workouts_measures.html")
 
 
+@app.route("/workouts/calendar")
+def workout_calendar_page():
+    return render_template("workouts_calendar.html")
+
+
+@app.route("/workouts/social")
+def workout_social_page():
+    return render_template("workouts_social.html")
+
+
 
 # load data safely
 def load_preset_workouts():
@@ -307,6 +322,62 @@ def load_routine_folders():
 def save_routine_folders(folders):
     with open(ROUTINE_FOLDER_FILE, "w", encoding="utf-8") as file:
         json.dump(folders, file, indent=4)
+
+
+def load_social_data():
+    default_social = {"profiles": {}, "follows": [], "likes": {}, "comments": {}}
+    try:
+        with open(SOCIAL_FILE, "r", encoding="utf-8") as file:
+            social = json.load(file)
+    except (json.JSONDecodeError, FileNotFoundError):
+        save_social_data(default_social)
+        return default_social
+
+    if not isinstance(social, dict):
+        return default_social
+
+    for key, value in default_social.items():
+        if key not in social or not isinstance(social.get(key), type(value)):
+            social[key] = value
+    return social
+
+
+def save_social_data(social):
+    with open(SOCIAL_FILE, "w", encoding="utf-8") as file:
+        json.dump(social, file, indent=4)
+
+
+def list_usernames():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT username FROM users ORDER BY username")
+    users = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return users
+
+
+def public_profile_for_user(username, social):
+    profile = social.get("profiles", {}).get(username, {})
+    return {
+        "username": username,
+        "bio": normalize_text(profile.get("bio")) or "Training quietly and stacking reps.",
+        "private": bool(profile.get("private", False)),
+        "hide_suggestions": bool(profile.get("hide_suggestions", False))
+    }
+
+
+def is_following_user(social, follower, following):
+    return any(
+        item.get("follower") == follower and item.get("following") == following
+        for item in social.get("follows", [])
+    )
+
+
+def can_view_social_user(social, viewer, target):
+    if viewer == target:
+        return True
+    profile = public_profile_for_user(target, social)
+    return not profile.get("private") or is_following_user(social, viewer, target)
 
 
 def load_measurements():
@@ -615,6 +686,80 @@ def get_completed_sets(workout):
     return []
 
 
+def workout_identity_keys(workout):
+    keys = set()
+    if not isinstance(workout, dict):
+        return keys
+
+    preset_id = normalize_text(str(workout.get("preset_id") or workout.get("exerciseId") or ""))
+    name = normalize_text(workout.get("workout")).lower()
+
+    if preset_id:
+        keys.add(f"id:{preset_id}")
+    if name:
+        keys.add(f"name:{name}")
+    return keys
+
+
+def build_previous_performance_for_workout(history, current_user, workout):
+    keys = workout_identity_keys(workout)
+    previous_sets = []
+    best_weight = 0
+    best_reps = 0
+    best_volume = 0
+
+    if not keys:
+        return {
+            "previous_set_details": [],
+            "personal_records": {
+                "best_weight": 0,
+                "best_reps": 0,
+                "best_volume": 0
+            }
+        }
+
+    sessions = [
+        session for session in history
+        if isinstance(session, dict) and session.get("owner") == current_user
+    ]
+    sessions.sort(key=lambda item: parse_completed_at(item.get("completed_at")) or datetime.min, reverse=True)
+
+    for session in sessions:
+        session_match = False
+        for completed_workout in session.get("completed_workout", []):
+            if not isinstance(completed_workout, dict):
+                continue
+            if not (keys & workout_identity_keys(completed_workout)):
+                continue
+
+            completed_sets = get_completed_sets(completed_workout)
+            if completed_sets and not previous_sets:
+                previous_sets = completed_sets
+                session_match = True
+
+            for set_item in completed_sets:
+                kg = set_item.get("kg", 0)
+                reps = set_item.get("reps", 0)
+                if isinstance(kg, (int, float)) and kg > best_weight:
+                    best_weight = kg
+                if isinstance(reps, int) and reps > best_reps:
+                    best_reps = reps
+                if isinstance(kg, (int, float)) and isinstance(reps, int):
+                    best_volume = max(best_volume, kg * reps)
+
+        if session_match:
+            continue
+
+    return {
+        "previous_set_details": previous_sets,
+        "personal_records": {
+            "best_weight": round(best_weight, 1),
+            "best_reps": best_reps,
+            "best_volume": round(best_volume, 1)
+        }
+    }
+
+
 def add_group_count(group_counts, muscle, set_count):
     group = muscle_map_group(muscle)
     if not group:
@@ -782,6 +927,10 @@ def exercise_performance_key(workout):
     return f"custom:{normalize_text(workout.get('workout')).lower()}"
 
 
+def format_exercise_key(workout):
+    return normalize_text(workout.get("workout")) or exercise_performance_key(workout)
+
+
 def get_strength_level(exercise_name, estimated_one_rep_max):
     name = normalize_text(exercise_name).lower()
     if "bench press" in name:
@@ -816,7 +965,88 @@ def update_best_record(best_records, key, value, record):
         best_records[key] = {
             "value": round(value, 1),
             **record
-        }
+    }
+
+
+def summarize_social_stats(history, username):
+    sessions = [
+        session for session in history
+        if isinstance(session, dict) and session.get("owner") == username
+    ]
+    total_sets = 0
+    total_volume = 0
+    duration_seconds = 0
+    muscle_scores = {}
+    exercise_names = set()
+
+    for session in sessions:
+        duration_seconds += session.get("duration_seconds", 0) if isinstance(session.get("duration_seconds"), int) else 0
+        for workout in session.get("completed_workout", []):
+            if not isinstance(workout, dict):
+                continue
+            if workout.get("workout"):
+                exercise_names.add(str(workout.get("workout")).lower())
+            completed_sets = get_completed_sets(workout)
+            total_sets += len(completed_sets)
+            for set_item in completed_sets:
+                kg = set_item.get("kg", 0)
+                reps = set_item.get("reps", 0)
+                if isinstance(kg, (int, float)) and isinstance(reps, int):
+                    total_volume += kg * reps
+            for muscle in normalize_string_list(workout.get("primaryMuscles")):
+                muscle_scores[muscle] = muscle_scores.get(muscle, 0) + len(completed_sets)
+            for muscle in normalize_string_list(workout.get("secondaryMuscles")):
+                muscle_scores[muscle] = muscle_scores.get(muscle, 0) + (len(completed_sets) * 0.5)
+
+    top_muscles = sorted(
+        [{"muscle": muscle, "score": score} for muscle, score in muscle_scores.items()],
+        key=lambda item: item["score"],
+        reverse=True
+    )[:5]
+
+    return {
+        "workouts": len(sessions),
+        "sets": total_sets,
+        "volume": round(total_volume, 1),
+        "duration_seconds": duration_seconds,
+        "top_muscles": top_muscles,
+        "exercise_names": sorted(exercise_names)
+    }
+
+
+def social_history_session(history, history_id):
+    for index, session in enumerate(history):
+        session_id = session.get("id", index + 1)
+        if session_id == history_id:
+            session["id"] = session_id
+            return session
+    return None
+
+
+def enrich_social_session(session, social, viewer):
+    session_id = str(session.get("id"))
+    comments = social.get("comments", {}).get(session_id, [])
+    likes = social.get("likes", {}).get(session_id, [])
+    completed_workouts = [
+        enrich_workout_record(workout)
+        for workout in session.get("completed_workout", [])
+    ]
+
+    return {
+        "id": session.get("id"),
+        "owner": session.get("owner"),
+        "session_name": session.get("session_name") or "Workout",
+        "completed_at": session.get("completed_at", ""),
+        "workout_note": session.get("workout_note", ""),
+        "duration_seconds": session.get("duration_seconds", 0),
+        "completed_sets": session.get("completed_sets", sum(len(get_completed_sets(workout)) for workout in completed_workouts)),
+        "volume_load": session.get("volume_load", 0),
+        "muscle_split": session.get("muscle_split") or calculate_muscle_split(completed_workouts),
+        "completed_workout": completed_workouts,
+        "like_count": len(set(likes)),
+        "viewer_liked": viewer in likes,
+        "comments": comments[-12:]
+    }
 
 
 def build_exercise_performance_for_user(history, current_user):
@@ -1071,6 +1301,121 @@ def build_workout_from_routine_exercise(exercise, owner, workout_id):
     }
 
 
+def get_history_session_for_user(history, history_id, current_user):
+    for index, session in enumerate(history):
+        session_id = session.get("id", index + 1)
+        if session_id != history_id:
+            continue
+        if session.get("owner") != current_user:
+            return None, jsonify({
+                "status": "error",
+                "message": "You are not allowed to access this history."
+            }), 403
+        session["id"] = session_id
+        return session, None, None
+    return None, jsonify({"status": "error", "message": "History session not found"}), 404
+
+
+def build_routine_exercises_from_history(session):
+    routine_exercises = []
+
+    for workout in session.get("completed_workout", []):
+        if not isinstance(workout, dict):
+            continue
+
+        preset_id = normalize_text(str(workout.get("preset_id") or workout.get("exerciseId") or ""))
+        if not preset_id or not find_preset_workout(preset_id):
+            continue
+
+        raw_sets = workout.get("set_details") if isinstance(workout.get("set_details"), list) else []
+        if not raw_sets and isinstance(workout.get("reps"), list):
+            raw_sets = [{"reps": rep} for rep in workout.get("reps", [])]
+
+        reps = [
+            int(set_item.get("reps"))
+            for set_item in raw_sets
+            if isinstance(set_item, dict)
+            and isinstance(set_item.get("reps"), int)
+            and set_item.get("reps") > 0
+        ]
+        set_count = len(raw_sets) if raw_sets else workout.get("sets", 1)
+
+        if not isinstance(set_count, int) or set_count <= 0:
+            set_count = max(1, len(reps))
+
+        rep_min = min(reps) if reps else 1
+        rep_max = max(reps) if reps else rep_min
+
+        routine_exercises.append({
+            "preset_id": preset_id,
+            "sets": set_count,
+            "rep_min": rep_min,
+            "rep_max": rep_max
+        })
+
+    return routine_exercises
+
+
+def build_live_workouts_from_history(session, owner, first_workout_id):
+    copied_workouts = []
+    next_id = first_workout_id
+
+    for workout in session.get("completed_workout", []):
+        if not isinstance(workout, dict):
+            continue
+
+        preset_id = normalize_text(str(workout.get("preset_id") or workout.get("exerciseId") or ""))
+        preset_workout = find_preset_workout(preset_id) if preset_id else None
+        set_details = workout.get("set_details") if isinstance(workout.get("set_details"), list) else []
+
+        if not set_details and isinstance(workout.get("reps"), list):
+            set_details = [
+                {"reps": rep, "kg": 0, "set_type": "working"}
+                for rep in workout.get("reps", [])
+                if isinstance(rep, int) and rep > 0
+            ]
+
+        clean_sets = []
+        for set_item in set_details:
+            if not isinstance(set_item, dict):
+                continue
+            reps = set_item.get("reps")
+            kg = set_item.get("kg", 0)
+            if not isinstance(reps, int) or reps <= 0:
+                continue
+            clean_sets.append({
+                "reps": reps,
+                "kg": kg if isinstance(kg, (int, float)) and kg >= 0 else 0,
+                "set_type": set_item.get("set_type") if set_item.get("set_type") in {"working", "warmup", "drop", "failure"} else "working",
+                "done": False
+            })
+
+        if not clean_sets:
+            clean_sets = [{"reps": 1, "kg": 0, "set_type": "working", "done": False}]
+
+        copied_workouts.append({
+            "id": next_id,
+            "preset_id": preset_id,
+            "exerciseId": preset_id or workout.get("exerciseId"),
+            "workout": workout.get("workout") or (preset_workout.get("name") if preset_workout else "Workout"),
+            "equipment": workout.get("equipment") or ((preset_workout.get("equipments") or [""])[0] if preset_workout else ""),
+            "bodyParts": workout.get("bodyParts") or (preset_workout.get("bodyParts", []) if preset_workout else []),
+            "primaryMuscles": workout.get("primaryMuscles") or (preset_workout.get("targetMuscles", []) if preset_workout else []),
+            "secondaryMuscles": workout.get("secondaryMuscles") or (preset_workout.get("secondaryMuscles", []) if preset_workout else []),
+            "owner": owner,
+            "is_preset": False,
+            "completed": False,
+            "notes": workout.get("notes", ""),
+            "sets": len(clean_sets),
+            "reps": [item["reps"] for item in clean_sets],
+            "set_details": clean_sets,
+            "routine_name": session.get("session_name", "")
+        })
+        next_id += 1
+
+    return copied_workouts
+
+
 def clean_set_details(set_details):
     if not isinstance(set_details, list) or not set_details:
         return None, "set_details must be a non-empty list"
@@ -1265,6 +1610,127 @@ def delete_history_data(history_id):
     }), 200
 
 
+@app.route("/history-data/<int:history_id>/routine", methods=["POST"])
+@jwt_required()
+def create_routine_from_history(history_id):
+    data = request.get_json(silent=True) or {}
+    current_user = get_jwt_identity()
+    history = load_workout_history()
+    session, error_response, status_code = get_history_session_for_user(history, history_id, current_user)
+
+    if error_response is not None:
+        return error_response, status_code
+
+    return create_routine_from_history_payload(session, current_user, data)
+
+
+def create_routine_from_history_payload(session, current_user, data=None):
+    data = data or {}
+    default_name = session.get("session_name") or session.get("routine_name") or "Workout"
+    routine_name = normalize_text(data.get("name")) or f"{default_name} Routine"
+    folder_id = data.get("folder_id")
+
+    if folder_id is not None:
+        if not isinstance(folder_id, int):
+            return jsonify({"status": "error", "message": "folder_id must be a number"}), 400
+        folders = load_routine_folders()
+        folder_exists = any(
+            folder.get("id") == folder_id and folder.get("owner") == current_user
+            for folder in folders
+        )
+        if not folder_exists:
+            return jsonify({"status": "error", "message": "Folder not found"}), 404
+
+    routine_exercises = build_routine_exercises_from_history(session)
+    cleaned_exercises, error = clean_routine_exercises(routine_exercises)
+    if error:
+        return jsonify({
+            "status": "error",
+            "message": "This workout has no preset exercises that can be saved as a routine."
+        }), 400
+
+    routines = load_routines()
+    routine = {
+        "id": next_numeric_id(routines),
+        "owner": current_user,
+        "name": routine_name,
+        "folder_id": folder_id,
+        "exercises": cleaned_exercises
+    }
+
+    routines.append(routine)
+    save_routines(routines)
+
+    return jsonify({
+        "status": "success",
+        "message": "Routine created from workout",
+        "data": routine
+    }), 201
+
+
+@app.route("/history-data/<int:history_id>/copy", methods=["POST"])
+@jwt_required()
+def copy_history_workout(history_id):
+    current_user = get_jwt_identity()
+    history = load_workout_history()
+    session, error_response, status_code = get_history_session_for_user(history, history_id, current_user)
+
+    if error_response is not None:
+        return error_response, status_code
+
+    workouts = load_workout_sections()
+    remaining_workouts = [workout for workout in workouts if workout.get("owner") != current_user]
+    copied_workouts = build_live_workouts_from_history(
+        session,
+        current_user,
+        next_numeric_id(remaining_workouts)
+    )
+
+    if not copied_workouts:
+        return jsonify({"status": "error", "message": "This workout has nothing to copy."}), 400
+
+    remaining_workouts.extend(copied_workouts)
+    save_workout_sections(remaining_workouts)
+
+    return jsonify({
+        "status": "success",
+        "message": "Workout copied into a new live session",
+        "data": copied_workouts
+    }), 201
+
+
+@app.route("/calendar-log-workout", methods=["POST"])
+@jwt_required()
+def calendar_log_workout():
+    data = request.get_json(silent=True) or {}
+    workout_date = normalize_text(data.get("date"))
+    session_name = normalize_text(data.get("session_name")) or "Logged Workout"
+
+    try:
+        datetime.strptime(workout_date, "%Y-%m-%d")
+    except ValueError:
+        return jsonify({"status": "error", "message": "Date must use YYYY-MM-DD"}), 400
+
+    current_user = get_jwt_identity()
+    history = load_workout_history()
+    history.append({
+        "id": next_numeric_id(history),
+        "owner": current_user,
+        "session_name": session_name,
+        "completed_at": f"{workout_date} 12:00",
+        "completed_workout": [],
+        "muscle_split": [],
+        "muscle_map": []
+    })
+    save_workout_history(history)
+
+    return jsonify({
+        "status": "success",
+        "message": "Workout logged",
+        "data": history[-1]
+    }), 201
+
+
 @app.route("/statistics-data", methods=["GET"])
 @jwt_required()
 def get_statistics_data():
@@ -1295,6 +1761,276 @@ def get_exercise_performance_data():
         "message": "Exercise performance retrieved",
         "data": exercises
     }), 200
+
+
+@app.route("/social-data", methods=["GET"])
+@jwt_required()
+def get_social_data():
+    current_user = get_jwt_identity()
+    feed = request.args.get("feed", "discover")
+    social = load_social_data()
+    history = load_workout_history()
+    users = [user for user in list_usernames() if user != current_user]
+
+    following = {
+        item.get("following")
+        for item in social.get("follows", [])
+        if item.get("follower") == current_user
+    }
+    profiles = []
+    for username in users:
+        profile = public_profile_for_user(username, social)
+        if profile.get("hide_suggestions"):
+            continue
+        profiles.append({
+            **profile,
+            "following": username in following,
+            "followers": sum(1 for item in social.get("follows", []) if item.get("following") == username),
+            "workouts": sum(1 for item in history if item.get("owner") == username)
+        })
+
+    visible_sessions = []
+    for index, session in enumerate(history):
+        owner = session.get("owner")
+        if not owner or owner == current_user:
+            continue
+        if feed == "following" and owner not in following:
+            continue
+        if feed == "discover" and owner in following:
+            continue
+        if not can_view_social_user(social, current_user, owner):
+            continue
+        session["id"] = session.get("id", index + 1)
+        if session.get("is_private") is True:
+            continue
+        visible_sessions.append(enrich_social_session(session, social, current_user))
+
+    visible_sessions.sort(key=lambda item: parse_completed_at(item.get("completed_at")) or datetime.min, reverse=True)
+
+    return jsonify({
+        "status": "success",
+        "data": {
+            "viewer": public_profile_for_user(current_user, social),
+            "suggested": profiles[:12],
+            "feed": visible_sessions[:50],
+            "following": sorted(following)
+        }
+    }), 200
+
+
+@app.route("/social/profile", methods=["PUT"])
+@jwt_required()
+def update_social_profile():
+    data = request.get_json(silent=True) or {}
+    current_user = get_jwt_identity()
+    social = load_social_data()
+    profile = social.setdefault("profiles", {}).setdefault(current_user, {})
+    if "bio" in data:
+        profile["bio"] = normalize_text(data.get("bio"))[:180]
+    if "private" in data:
+        profile["private"] = bool(data.get("private"))
+    if "hide_suggestions" in data:
+        profile["hide_suggestions"] = bool(data.get("hide_suggestions"))
+    save_social_data(social)
+
+    return jsonify({
+        "status": "success",
+        "data": public_profile_for_user(current_user, social)
+    }), 200
+
+
+@app.route("/social/profile/<username>", methods=["GET"])
+@jwt_required()
+def get_social_profile(username):
+    current_user = get_jwt_identity()
+    target_user = normalize_text(username)
+    if target_user not in list_usernames():
+        return jsonify({"status": "error", "message": "User not found"}), 404
+
+    social = load_social_data()
+    if not can_view_social_user(social, current_user, target_user):
+        return jsonify({"status": "error", "message": "This profile is private. Follow first to view it."}), 403
+
+    history = load_workout_history()
+    stats = summarize_social_stats(history, target_user)
+    viewer_stats = summarize_social_stats(history, current_user)
+    common_exercises = sorted(set(stats["exercise_names"]) & set(viewer_stats["exercise_names"]))
+    recent_sessions = [
+        enrich_social_session({**session, "id": session.get("id", index + 1)}, social, current_user)
+        for index, session in enumerate(history)
+        if session.get("owner") == target_user and not session.get("is_private")
+    ]
+    recent_sessions.sort(key=lambda item: parse_completed_at(item.get("completed_at")) or datetime.min, reverse=True)
+
+    return jsonify({
+        "status": "success",
+        "data": {
+            "profile": {
+                **public_profile_for_user(target_user, social),
+                "following": is_following_user(social, current_user, target_user),
+                "followers": sum(1 for item in social.get("follows", []) if item.get("following") == target_user),
+                "following_count": sum(1 for item in social.get("follows", []) if item.get("follower") == target_user)
+            },
+            "stats": stats,
+            "viewer_stats": viewer_stats,
+            "common_exercises": common_exercises[:10],
+            "recent_workouts": recent_sessions[:8]
+        }
+    }), 200
+
+
+@app.route("/social/follow/<username>", methods=["POST", "DELETE"])
+@jwt_required()
+def follow_social_user(username):
+    current_user = get_jwt_identity()
+    target_user = normalize_text(username)
+    if not target_user or target_user == current_user or target_user not in list_usernames():
+        return jsonify({"status": "error", "message": "User not found"}), 404
+
+    social = load_social_data()
+    social["follows"] = [
+        item for item in social.get("follows", [])
+        if not (item.get("follower") == current_user and item.get("following") == target_user)
+    ]
+    if request.method == "POST":
+        social["follows"].append({"follower": current_user, "following": target_user})
+    save_social_data(social)
+
+    return jsonify({"status": "success", "following": request.method == "POST"}), 200
+
+
+@app.route("/social/workouts/<int:history_id>/like", methods=["POST"])
+@jwt_required()
+def like_social_workout(history_id):
+    current_user = get_jwt_identity()
+    social = load_social_data()
+    history = load_workout_history()
+    session = social_history_session(history, history_id)
+    if not session or session.get("is_private") is True or not can_view_social_user(social, current_user, session.get("owner")):
+        return jsonify({"status": "error", "message": "Workout not found"}), 404
+
+    key = str(history_id)
+    likes = set(social.setdefault("likes", {}).get(key, []))
+    if current_user in likes:
+        likes.remove(current_user)
+    else:
+        likes.add(current_user)
+    social["likes"][key] = sorted(likes)
+    save_social_data(social)
+
+    return jsonify({"status": "success", "liked": current_user in likes, "like_count": len(likes)}), 200
+
+
+@app.route("/social/workouts/<int:history_id>/comments", methods=["POST"])
+@jwt_required()
+def comment_social_workout(history_id):
+    data = request.get_json(silent=True) or {}
+    text = normalize_text(data.get("text"))[:300]
+    if not text:
+        return jsonify({"status": "error", "message": "Comment cannot be empty"}), 400
+
+    current_user = get_jwt_identity()
+    social = load_social_data()
+    history = load_workout_history()
+    session = social_history_session(history, history_id)
+    if not session or session.get("is_private") is True or not can_view_social_user(social, current_user, session.get("owner")):
+        return jsonify({"status": "error", "message": "Workout not found"}), 404
+
+    key = str(history_id)
+    comment = {
+        "id": next_numeric_id(social.setdefault("comments", {}).get(key, []), floor=0),
+        "owner": current_user,
+        "text": text,
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M")
+    }
+    social["comments"].setdefault(key, []).append(comment)
+    save_social_data(social)
+
+    return jsonify({"status": "success", "data": comment}), 201
+
+
+@app.route("/social/leaderboards", methods=["GET"])
+@jwt_required()
+def get_social_leaderboards():
+    current_user = get_jwt_identity()
+    social = load_social_data()
+    history = load_workout_history()
+    friends = {
+        item.get("following")
+        for item in social.get("follows", [])
+        if item.get("follower") == current_user
+    }
+    friends.add(current_user)
+    leaderboard = {}
+
+    for session in history:
+        owner = session.get("owner")
+        if owner not in friends:
+            continue
+        for workout in session.get("completed_workout", []):
+            name = format_exercise_key(workout)
+            if not name:
+                continue
+            for set_item in get_completed_sets(workout):
+                kg = set_item.get("kg", 0)
+                reps = set_item.get("reps", 0)
+                if not isinstance(kg, (int, float)) or kg <= 0:
+                    continue
+                score = kg * (1 + ((reps if isinstance(reps, int) else 1) / 30))
+                current = leaderboard.get(name, {}).get(owner)
+                if not current or score > current["score"]:
+                    leaderboard.setdefault(name, {})[owner] = {
+                        "username": owner,
+                        "kg": kg,
+                        "reps": reps,
+                        "score": round(score, 1),
+                        "session_id": session.get("id")
+                    }
+
+    rows = [
+        {
+            "exercise": exercise,
+            "leaders": sorted(leaders.values(), key=lambda item: item["score"], reverse=True)[:5]
+        }
+        for exercise, leaders in leaderboard.items()
+    ]
+    rows.sort(key=lambda item: item["exercise"])
+
+    return jsonify({"status": "success", "data": rows[:20]}), 200
+
+
+@app.route("/social/workouts/<int:history_id>/routine", methods=["POST"])
+@jwt_required()
+def create_routine_from_social_workout(history_id):
+    current_user = get_jwt_identity()
+    social = load_social_data()
+    history = load_workout_history()
+    session = social_history_session(history, history_id)
+    if not session or session.get("is_private") is True or not can_view_social_user(social, current_user, session.get("owner")):
+        return jsonify({"status": "error", "message": "Workout not found"}), 404
+    session = dict(session)
+    session["owner"] = current_user
+    return create_routine_from_history_payload(session, current_user)
+
+
+@app.route("/social/workouts/<int:history_id>/copy", methods=["POST"])
+@jwt_required()
+def copy_social_workout(history_id):
+    current_user = get_jwt_identity()
+    social = load_social_data()
+    history = load_workout_history()
+    session = social_history_session(history, history_id)
+    if not session or session.get("is_private") is True or not can_view_social_user(social, current_user, session.get("owner")):
+        return jsonify({"status": "error", "message": "Workout not found"}), 404
+
+    workouts = load_workout_sections()
+    remaining_workouts = [workout for workout in workouts if workout.get("owner") != current_user]
+    copied_workouts = build_live_workouts_from_history(session, current_user, next_numeric_id(remaining_workouts))
+    if not copied_workouts:
+        return jsonify({"status": "error", "message": "This workout has nothing to copy."}), 400
+    remaining_workouts.extend(copied_workouts)
+    save_workout_sections(remaining_workouts)
+    return jsonify({"status": "success", "data": copied_workouts}), 201
 
 
 @app.route("/measurements-data", methods=["GET"])
@@ -1877,9 +2613,17 @@ def start_empty_workout():
 def get_data():
     current_user = get_jwt_identity()
     workouts = load_workout_sections()
+    workout_history = load_workout_history()
 
     user_workouts = [w for w in workouts if w.get("owner") == current_user]
     user_workouts = [enrich_workout_record(workout) for workout in user_workouts]
+    user_workouts = [
+        {
+            **workout,
+            **build_previous_performance_for_workout(workout_history, current_user, workout)
+        }
+        for workout in user_workouts
+    ]
 
     keyword = (request.args.get("q") or "").strip().lower()
 
@@ -1959,6 +2703,7 @@ def handle_post():
 @app.route("/finish-workout", methods=["POST"])
 @jwt_required()
 def finish_workout():
+    data = request.get_json(silent=True) or {}
     current_user = get_jwt_identity()
     current_workouts = load_workout_sections()
     workout_history = load_workout_history()
@@ -1971,18 +2716,48 @@ def finish_workout():
             "message": "No active workout to finish"
         }), 400
 
-    session_name = user_workouts[0].get("routine_name") if user_workouts else ""
+    session_name = normalize_text(data.get("session_name")) or (user_workouts[0].get("routine_name") if user_workouts else "")
     if not session_name:
         session_name = user_workouts[0].get("workout") if len(user_workouts) == 1 else "Workout"
 
+    completed_at = normalize_text(data.get("completed_at"))
+    if completed_at:
+        try:
+            parsed_completed_at = datetime.fromisoformat(completed_at.replace("Z", ""))
+        except ValueError:
+            return jsonify({"status": "error", "message": "completed_at must be a valid date and time"}), 400
+    else:
+        parsed_completed_at = datetime.now()
+
+    duration_seconds = data.get("duration_seconds", 0)
+    if not isinstance(duration_seconds, int) or duration_seconds < 0:
+        duration_seconds = 0
+
+    workout_note = normalize_text(data.get("workout_note"))
+    is_private = data.get("is_private", False)
+    if not isinstance(is_private, bool):
+        is_private = False
+
     muscle_split = calculate_muscle_split(user_workouts)
     muscle_map = calculate_muscle_map(user_workouts)
+    completed_sets = sum(len(get_completed_sets(workout)) for workout in user_workouts)
+    volume_load = sum(
+        (set_item.get("kg", 0) if isinstance(set_item.get("kg", 0), (int, float)) else 0)
+        * (set_item.get("reps", 0) if isinstance(set_item.get("reps", 0), int) else 0)
+        for workout in user_workouts
+        for set_item in get_completed_sets(workout)
+    )
 
     workout_history.append({
         "id": next_numeric_id(workout_history),
         "owner": current_user,
         "session_name": session_name,
-        "completed_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "completed_at": parsed_completed_at.strftime("%Y-%m-%d %H:%M"),
+        "duration_seconds": duration_seconds,
+        "workout_note": workout_note,
+        "is_private": is_private,
+        "completed_sets": completed_sets,
+        "volume_load": round(volume_load, 1),
         "completed_workout": user_workouts,
         "muscle_split": muscle_split,
         "muscle_map": muscle_map
@@ -1995,6 +2770,10 @@ def finish_workout():
     return jsonify({
         "status": "success",
         "message": "Workout finished successfully",
+        "session_name": session_name,
+        "completed_sets": completed_sets,
+        "volume_load": round(volume_load, 1),
+        "duration_seconds": duration_seconds,
         "muscle_split": muscle_split,
         "muscle_map": muscle_map
     }), 200
